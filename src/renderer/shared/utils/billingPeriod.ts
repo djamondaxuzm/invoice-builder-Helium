@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns';
 import { InvoiceStatus } from '../enums/invoiceStatus';
 import { InvoiceType } from '../enums/invoiceType';
 import type { Invoice } from '../types/invoice';
@@ -88,15 +89,15 @@ export const buildBillingPeriod = (invoices: Invoice[], settings: Settings) => {
     });
   const total = rows.reduce((sum, row) => sum + row.total, 0);
   const paid = rows.reduce((sum, row) => sum + row.paid, 0);
-  if (!Number.isSafeInteger(total) || !Number.isSafeInteger(paid))
+  const balance = total - paid;
+  if (!Number.isSafeInteger(total) || !Number.isSafeInteger(paid) || !Number.isSafeInteger(balance))
     throw new Error('The billing period amount is too large.');
   return {
     rows,
     total,
     paid,
-    balance: total - paid,
+    balance,
     from: billingDate(rows[0].invoice.issuedAt),
     to: billingDate(rows[rows.length - 1].invoice.issuedAt)
   };
 };
-import { parseISO } from 'date-fns';
