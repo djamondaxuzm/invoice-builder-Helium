@@ -423,23 +423,28 @@ const processSequence = async (
     [data.businessId, data.clientId, data.invoiceType]
   );
 
+  const sequenceData = await getScopedNextSequence(db, data);
+
   if (currentSequence) {
+    // Saving a manual or older number must not consume the next automatic number.
+    // Keep the high-water mark so deleting an invoice does not reuse its number.
+    const nextSequence = Math.max(Number(currentSequence.nextSequence), sequenceData.nextSequence);
+    if (nextSequence === Number(currentSequence.nextSequence)) return { success: true } as Response<number>;
+
     const r = await handlers.handleSequences(
       {
         id: currentSequence.id,
         businessId: currentSequence.businessId,
         clientId: currentSequence.clientId,
-        nextSequence: Number(currentSequence.nextSequence) + 1,
+        nextSequence,
         invoiceType: currentSequence.invoiceType
       } as InvoiceSequence,
       true
     );
     if (!r.success) {
-      await rollbackOrThrow(db);
       return r;
     }
   } else {
-    const sequenceData = await getScopedNextSequence(db, data);
     const r = await handlers.handleSequences({
       businessId: data.businessId,
       clientId: data.clientId,
@@ -447,7 +452,6 @@ const processSequence = async (
       invoiceType: data.invoiceType
     } as InvoiceSequence);
     if (!r.success) {
-      await rollbackOrThrow(db);
       return r;
     }
   }
@@ -462,6 +466,7 @@ const processSequenceOnUpdate = async (
     previousInvoiceNumber?: string;
     previousClientId: number;
     previousBusinessId: number;
+    previousInvoiceType: InvoiceType;
     invoiceNumber?: string;
     clientId: number;
     businessId: number;
@@ -471,56 +476,13 @@ const processSequenceOnUpdate = async (
   if (
     data.previousInvoiceNumber === data.invoiceNumber &&
     data.previousClientId === data.clientId &&
-    data.previousBusinessId === data.businessId
+    data.previousBusinessId === data.businessId &&
+    data.previousInvoiceType === data.invoiceType
   ) {
     return { success: true } as Response<number>;
   }
 
-  const parsedInvoiceNumber = parseNumericInvoiceNumber(data.invoiceNumber);
-  if (!parsedInvoiceNumber) {
-    return { success: true } as Response<number>;
-  }
-
-  const currentSequence = await db.get<InvoiceSequence>(
-    `SELECT * FROM invoice_sequences WHERE "businessId" = ? and "clientId" = ? and "invoiceType" = ?`,
-    [data.businessId, data.clientId, data.invoiceType]
-  );
-
-  const desiredNextSequence = parsedInvoiceNumber.numericValue + 1;
-
-  if (currentSequence) {
-    if (Number(currentSequence.nextSequence) >= desiredNextSequence) {
-      return { success: true } as Response<number>;
-    }
-
-    const r = await handlers.handleSequences(
-      {
-        id: currentSequence.id,
-        businessId: currentSequence.businessId,
-        clientId: currentSequence.clientId,
-        nextSequence: desiredNextSequence,
-        invoiceType: data.invoiceType
-      } as InvoiceSequence,
-      true
-    );
-    if (!r.success) {
-      await rollbackOrThrow(db);
-      return r;
-    }
-  } else {
-    const r = await handlers.handleSequences({
-      businessId: data.businessId,
-      clientId: data.clientId,
-      nextSequence: desiredNextSequence,
-      invoiceType: data.invoiceType
-    } as InvoiceSequence);
-    if (!r.success) {
-      await rollbackOrThrow(db);
-      return r;
-    }
-  }
-
-  return { success: true } as Response<number>;
+  return processSequence(db, handlers, data);
 };
 
 const setPaidAtAndClosedAt = (invoice: Invoice): Invoice => {
@@ -992,8 +954,6 @@ export const addInvoice = async (db: DatabaseAdapter, data: Invoice) => {
 
     const newResult = await getInvoices(db, { id: newId });
 
-    await db.run('COMMIT');
-
     const resultSequence = await processSequence(
       db,
       { handleSequences },
@@ -1006,8 +966,10 @@ export const addInvoice = async (db: DatabaseAdapter, data: Invoice) => {
     );
     if (!resultSequence.success) {
       await rollbackOrThrow(db);
-      return { success: false, key: result.key };
+      return { success: false, key: resultSequence.key, message: resultSequence.message };
     }
+
+    await db.run('COMMIT');
 
     return { success: true, data: newResult.length > 0 ? newResult[0] : newResult };
   } catch (error) {
@@ -1194,8 +1156,6 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
 
     const newResult = await getInvoices(db, { id: data.id });
 
-    await db.run('COMMIT');
-
     const resultSequence = await processSequenceOnUpdate(
       db,
       { handleSequences },
@@ -1203,6 +1163,7 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
         previousInvoiceNumber: currentInvoice.invoiceNumber,
         previousClientId: currentInvoice.clientId,
         previousBusinessId: currentInvoice.businessId,
+        previousInvoiceType: currentInvoice.invoiceType,
         invoiceNumber: data.invoiceNumber,
         clientId: data.clientId,
         businessId: data.businessId,
@@ -1211,8 +1172,10 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
     );
     if (!resultSequence.success) {
       await rollbackOrThrow(db);
-      return { success: false, key: result.key };
+      return { success: false, key: resultSequence.key, message: resultSequence.message };
     }
+
+    await db.run('COMMIT');
 
     return { success: true, data: newResult.length > 0 ? newResult[0] : newResult };
   } catch (error) {
@@ -1231,7 +1194,10 @@ export const duplicateInvoice = async (
 
     const original = await db.get('SELECT * FROM invoices WHERE "id" = ?;', [invoiceId]);
 
-    if (!original) return { success: false };
+    if (!original) {
+      await rollbackOrThrow(db);
+      return { success: false };
+    }
 
     const businessId = Number(original.businessId);
     const clientId = Number(original.clientId);

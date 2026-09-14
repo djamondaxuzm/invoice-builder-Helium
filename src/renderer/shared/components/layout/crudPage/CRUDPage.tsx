@@ -44,6 +44,7 @@ type SortOption<T> = CustomOption<keyof T, T>;
 interface Props<T, TAdd, TUpdate> {
   componentId: string;
   renderCustomButtons?: () => React.ReactNode;
+  listActions?: ReactNode;
   title?: string;
   useRetrieve?: (args: { filter?: FilterData[]; onDone?: (data: Response<T[]>) => void }) => {
     items: T[];
@@ -186,13 +187,17 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
 
   const activeSortBy = sortOptions.find(option => option.value === persistentSort.activeSortBy.value) ?? sortOptions[0];
 
-  const { execute: addItem, data: newRow } = useAdd({
+  const { execute: addItem } = useAdd({
     item: newItem,
     immediate: false,
     onDone: (data: Response<T>) => {
       setNewItem(undefined);
-      setSelectedItem(undefined);
-      reload();
+      if (data.success) {
+        setIsModalOpen(false);
+        setSelectedItem(isDesktop ? data.data : undefined);
+        dispatch(setAllowed(true));
+        reload();
+      }
 
       if (!data.success) {
         if (data.message) {
@@ -225,12 +230,12 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
     immediate: false,
     onDone: (data: Response<T>) => {
       setChangedItem(undefined);
-      if (!isDesktop) {
-        setSelectedItem(undefined);
+      if (data.success) {
+        setIsModalOpen(false);
+        setSelectedItem(isDesktop ? data.data : undefined);
         dispatch(setAllowed(true));
-      } else setSelectedItem(data.data);
-
-      reload();
+        reload();
+      }
 
       if (!data.success) {
         if (data.message) {
@@ -334,9 +339,8 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
       } else {
         setNewItem(normalized as TAdd);
       }
-      handleCloseModal(true);
     },
-    [validateAndNormalize, handleCloseModal, isUpdate]
+    [validateAndNormalize, isUpdate]
   );
 
   const onSearchChanged = useCallback(
@@ -499,10 +503,6 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
   }, [changedItem, updateItem]);
 
   useEffect(() => {
-    if (newRow) setSelectedItem(newRow);
-  }, [newRow]);
-
-  useEffect(() => {
     if (duplicatedRow) setSelectedItem(duplicatedRow);
   }, [duplicatedRow]);
 
@@ -590,6 +590,7 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
           )}
         </Box>
 
+        {props.listActions}
         <SearchInput value={persistentSearch} onChange={onSearchChanged} />
 
         <Box

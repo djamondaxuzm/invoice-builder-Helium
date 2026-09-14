@@ -91,6 +91,7 @@ const InvoiceFormComponent: FC<Props> = ({
             ...invoice
           }
         : {
+            issuedAt: new Date().toISOString(),
             invoiceType: type,
             status: type === InvoiceType.quotation ? InvoiceStatus.open : InvoiceStatus.unpaid,
             taxRate: 0,
@@ -136,7 +137,7 @@ const InvoiceFormComponent: FC<Props> = ({
   );
 
   useEffect(() => {
-    if (!preset) return;
+    if (!preset || invoice) return;
     const presetLayoutSchema = preset.layoutSchema ? preset.layoutSchema : undefined;
 
     startTransition(() => {
@@ -276,7 +277,7 @@ const InvoiceFormComponent: FC<Props> = ({
         };
       });
     });
-  }, [preset, startTransition]);
+  }, [preset, invoice, startTransition]);
 
   useEffect(() => {
     if (newStyleProfile && newRowStyleProfile && invoiceForm) {

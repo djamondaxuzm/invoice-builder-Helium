@@ -356,4 +356,92 @@ describe('invoice sequence handling', () => {
       formattedSequence: '000011'
     });
   });
+
+  it('does not skip 010 after saving older or nonnumeric invoices following 009', async () => {
+    const businessId = await insertBusiness(db, 'Business Manual', 'BM');
+    const clientId = await insertClient(db, 'Client Manual', 'CM');
+    const currencyId = await getCurrencyId(db, 'USD');
+
+    for (const number of ['009', '005', 'CUSTOM']) {
+      expect((await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, number))).success).toBe(true);
+    }
+
+    // Opening or refreshing the editor only previews a number; it does not reserve it.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect((await getNextSequence(db, { businessId, clientId, invoiceType: InvoiceType.invoice })).data).toEqual({
+        nextSequence: 10,
+        formattedSequence: '010'
+      });
+    }
+    expect((await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, '010'))).success).toBe(true);
+    expect(await loadNextSequence(db, businessId, clientId)).toBe(11);
+  });
+
+  it('advances past a manually entered higher number while preserving other scopes', async () => {
+    const businessId = await insertBusiness(db, 'Business Scope', 'BS');
+    const clientId = await insertClient(db, 'Client Scope', 'CS');
+    const otherClientId = await insertClient(db, 'Other Client', 'OC');
+    const currencyId = await getCurrencyId(db, 'USD');
+
+    for (const number of ['009', '020']) {
+      expect((await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, number))).success).toBe(true);
+    }
+    expect((await addInvoice(db, createInvoicePayload(businessId, otherClientId, currencyId, '001'))).success).toBe(
+      true
+    );
+    expect(
+      (await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, '002', InvoiceType.quotation)))
+        .success
+    ).toBe(true);
+
+    expect(await loadNextSequence(db, businessId, clientId)).toBe(21);
+    expect(await loadNextSequence(db, businessId, otherClientId)).toBe(2);
+    expect(await loadNextSequence(db, businessId, clientId, InvoiceType.quotation)).toBe(3);
+  });
+
+  it('rolls back a new invoice and its snapshots when sequence persistence fails', async () => {
+    const businessId = await insertBusiness(db, 'Business Atomic Add', 'BA');
+    const clientId = await insertClient(db, 'Client Atomic Add', 'CA');
+    const currencyId = await getCurrencyId(db, 'USD');
+    await db.run(`CREATE TRIGGER fail_sequence_insert BEFORE INSERT ON invoice_sequences
+      BEGIN SELECT RAISE(ABORT, 'sequence unavailable'); END;`);
+
+    const result = await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, '009'));
+    expect(result.success).toBe(false);
+    expect(await db.all('SELECT id FROM invoices')).toHaveLength(0);
+    expect(await db.all('SELECT id FROM invoice_client_snapshots')).toHaveLength(0);
+    expect(await loadNextSequence(db, businessId, clientId)).toBeUndefined();
+
+    await db.run('DROP TRIGGER fail_sequence_insert');
+    expect((await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, '009'))).success).toBe(true);
+    expect(await loadNextSequence(db, businessId, clientId)).toBe(10);
+  });
+
+  it('rolls back invoice edits when advancing the sequence fails', async () => {
+    const businessId = await insertBusiness(db, 'Business Atomic Update', 'BU');
+    const clientId = await insertClient(db, 'Client Atomic Update', 'CU');
+    const currencyId = await getCurrencyId(db, 'USD');
+    const added = await addInvoice(db, createInvoicePayload(businessId, clientId, currencyId, '009'));
+    expect(added.success).toBe(true);
+    const invoice = added.data as Invoice;
+    await db.run(`CREATE TRIGGER fail_sequence_update BEFORE UPDATE ON invoice_sequences
+      BEGIN SELECT RAISE(ABORT, 'sequence unavailable'); END;`);
+
+    const result = await updateInvoice(db, { ...invoice, invoiceNumber: '020', customerNotes: 'Not saved' });
+    expect(result.success).toBe(false);
+    const stored = await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [invoice.id]);
+    expect(stored?.invoiceNumber).toBe('009');
+    expect(stored?.customerNotes).toBeNull();
+    expect(await loadNextSequence(db, businessId, clientId)).toBe(10);
+
+    await db.run('DROP TRIGGER fail_sequence_update');
+    expect((await updateInvoice(db, { ...invoice, invoiceNumber: '020' })).success).toBe(true);
+    expect(await loadNextSequence(db, businessId, clientId)).toBe(21);
+  });
+
+  it('closes the transaction when the invoice to duplicate no longer exists', async () => {
+    expect((await duplicateInvoice(db, -1, InvoiceType.invoice)).success).toBe(false);
+    await expect(db.run('BEGIN')).resolves.toBeDefined();
+    await db.run('ROLLBACK');
+  });
 });
