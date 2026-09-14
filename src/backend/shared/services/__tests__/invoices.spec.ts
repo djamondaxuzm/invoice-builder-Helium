@@ -144,6 +144,32 @@ describe('invoice sequence handling', () => {
     await db.close();
   });
 
+  it.each([InvoiceStatus.paid, InvoiceStatus.closed])(
+    'preserves the %s date on ordinary edits and resets it on status transitions',
+    async status => {
+      const businessId = await insertBusiness(db, 'Date Business', 'DB');
+      const clientId = await insertClient(db, 'Date Client', 'DC');
+      const currencyId = await getCurrencyId(db, 'USD');
+      const added = await addInvoice(db, { ...createInvoicePayload(businessId, clientId, currencyId, '001'), status });
+      expect(added.success).toBe(true);
+      const invoice = added.data as Invoice;
+      const field = status === InvoiceStatus.paid ? 'paidAt' : 'closedAt';
+      const originalDate = '2025-01-02T12:00:00.000Z';
+      await db.run('UPDATE invoices SET "' + field + '" = ? WHERE id = ?', [originalDate, invoice.id]);
+      const payload = { ...invoice, customerNotes: 'Edited note' };
+      const before = structuredClone(payload);
+      expect((await updateInvoice(db, payload)).success).toBe(true);
+      expect(payload).toEqual(before);
+      expect((await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [invoice.id]))?.[field]).toBe(originalDate);
+      expect((await updateInvoice(db, { ...invoice, status: InvoiceStatus.unpaid })).success).toBe(true);
+      expect((await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [invoice.id]))?.[field]).toBeNull();
+      expect((await updateInvoice(db, { ...invoice, status })).success).toBe(true);
+      expect((await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [invoice.id]))?.[field]).not.toBe(
+        originalDate
+      );
+    }
+  );
+
   it('creates a client-scoped sequence row on addInvoice when missing and advances sequentially', async () => {
     const businessId = await insertBusiness(db, 'Business A', 'BA');
     const clientId = await insertClient(db, 'Client A', 'CA');

@@ -14,19 +14,15 @@ export const UTCDateRangePicker: React.FC<Props> = ({ valueFrom, valueTo, format
   const { t } = useTranslation();
   const [range, setRange] = useState<[string?, string?]>([valueFrom, valueTo]);
 
-  const clearRange = () => {
-    setRange([undefined, undefined]);
-    onChange(undefined);
-  };
-
   useEffect(() => {
-    if (range[0] && range[1]) {
-      onChange(range[0], range[1]);
-    } else {
-      onChange(undefined, undefined);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+    setRange([valueFrom, valueTo]);
+  }, [valueFrom, valueTo]);
+
+  const changeRange = (next: [string?, string?]) => {
+    setRange(next);
+    if (next[0] && next[1]) onChange(next[0], next[1]);
+    else onChange(undefined, undefined);
+  };
 
   return (
     <Box
@@ -43,7 +39,7 @@ export const UTCDateRangePicker: React.FC<Props> = ({ valueFrom, valueTo, format
         value={range[0]}
         format={format}
         onChange={newValue => {
-          setRange([newValue, range[1]]);
+          changeRange([newValue, range[1]]);
         }}
       />
       <Datepicker
@@ -51,11 +47,11 @@ export const UTCDateRangePicker: React.FC<Props> = ({ valueFrom, valueTo, format
         value={range[1]}
         format={format}
         onChange={newValue => {
-          setRange([range[0], newValue]);
+          changeRange([range[0], newValue]);
         }}
       />
 
-      <Button variant="outlined" onClick={clearRange}>
+      <Button variant="outlined" onClick={() => changeRange([undefined, undefined])}>
         {t('ariaLabel.clear')}
       </Button>
     </Box>

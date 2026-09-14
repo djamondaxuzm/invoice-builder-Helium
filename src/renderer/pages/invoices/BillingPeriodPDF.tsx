@@ -14,12 +14,14 @@ export const BillingPeriodPDF = ({
   period: ReturnType<typeof buildBillingPeriod>;
   settings: Settings;
 }) => {
+  const from = formatDate(period.from, settings.dateFormat);
+  const to = formatDate(period.to, settings.dateFormat);
   const first = period.rows[0].invoice;
   const subunit = first.invoiceCurrencySnapshot!.currencySubunit;
   const format = createCurrencyFormatter(settings, first);
   const money = (minor: number) => format(minor / subunit);
   return (
-    <Document title={`Billing period ${period.from} to ${period.to}`}>
+    <Document title={`Billing period ${from} to ${to}`}>
       <Page
         size="A4"
         style={{
@@ -34,7 +36,7 @@ export const BillingPeriodPDF = ({
         <View fixed style={{ height: 36, flexShrink: 0 }} />
         <Text style={{ fontSize: 22, lineHeight: 1.3, marginBottom: 5, fontWeight: 700 }}>Billing period</Text>
         <Text>
-          {period.from} - {period.to}
+          {from} - {to}
         </Text>
         <Text style={{ marginTop: 12 }}>{first.invoiceBusinessSnapshot?.businessName}</Text>
         <Text>{first.invoiceBusinessSnapshot?.businessAddress}</Text>
