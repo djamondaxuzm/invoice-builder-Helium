@@ -4,14 +4,9 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
-import utc from 'dayjs/plugin/utc';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DateFormat } from '../../../enums/dateFormat';
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
 interface Props {
   label: string;
@@ -30,18 +25,6 @@ export const Datepicker: React.FC<Props> = ({
   onChange = () => {}
 }) => {
   const { t } = useTranslation();
-  const [currValue, setCurrValue] = useState<string | undefined>(value);
-  const [selectedValue, setSelectedValue] = useState<string | undefined>(value);
-
-  useEffect(() => {
-    if (typeof selectedValue !== 'undefined') onChange(selectedValue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedValue]);
-
-  useEffect(() => {
-    setCurrValue(value);
-  }, [value]);
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <DatePicker
@@ -49,20 +32,12 @@ export const Datepicker: React.FC<Props> = ({
         views={['year', 'month', 'day']}
         openTo="day"
         label={label}
-        value={currValue ? dayjs.utc(currValue) : null}
+        value={value ? dayjs(value) : null}
         format={format.toUpperCase()}
         onChange={newValue => {
-          if (!newValue) {
-            setSelectedValue(undefined);
-            return;
-          }
-
-          const now = dayjs();
-          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          const combined = dayjs.tz(newValue?.format('YYYY-MM-DD') + ' ' + now.format('HH:mm:ss'), tz);
-
-          const utcValue = combined?.utc().toISOString();
-          setSelectedValue(utcValue);
+          if (newValue && !newValue.isValid()) return;
+          // Invoice dates follow the local calendar, like the list and PDF formatters.
+          onChange(newValue ? newValue.startOf('day').toISOString() : undefined);
         }}
         slotProps={{
           textField: {
@@ -76,13 +51,13 @@ export const Datepicker: React.FC<Props> = ({
               input: {
                 readOnly: true,
                 startAdornment:
-                  !required && currValue ? (
+                  !required && value ? (
                     <IconButton
                       size="small"
+                      aria-label={t('ariaLabel.clear')}
                       onClick={e => {
                         e.stopPropagation();
-                        setCurrValue(undefined);
-                        setSelectedValue(undefined);
+                        onChange(undefined);
                       }}
                     >
                       <ClearIcon fontSize="small" />

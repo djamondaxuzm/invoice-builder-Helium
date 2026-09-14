@@ -302,6 +302,14 @@ chmod +x Invoice-Builder-*.AppImage
 
 ## 📘 Tutorial
 
+### Billing-period PDFs
+
+In **Invoices**, choose **Billing period PDF**, optionally set a date range, and select two or more saved invoices for the same business, client and currency. Choose **Download PDF** to create a chronological statement with each invoice's line items, invoice total, and a combined period total, paid amount and balance due. For example, daily invoices 001–007 can appear together in one statement. The original invoices and their numbers remain unchanged; the statement does not create a new invoice or consume a sequence number.
+
+The date range filters which invoices can be selected; changing it clears the selection. The exported period runs from the earliest to the latest selected issue date. Archived invoices can also be selected. This is a statement export, not a stored billing-period record or a replacement for the original invoice PDFs/attachments. Billing-period labels are currently in English.
+
+Invoice dates follow the local calendar consistently in the picker, lists and PDFs. Saving an older or custom number no longer advances the automatic counter. Existing counters and issued invoice numbers are preserved; historical gaps are not automatically renumbered.
+
 Detailed tutorials and usage guides are available here: [TUTORIAL](TUTORIAL.md)
 
 Layout JSON structure and supported composition options are documented in [LAYOUT.md](LAYOUT.md).

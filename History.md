@@ -1,5 +1,18 @@
 # Invoice Builder
 
+## {DATE}, version {VERSION}
+
+New features & improvements
+
+- Added a billing-period PDF action to select saved invoices for one business, client and currency, filter by date, and export daily line items with a combined total, payments and balance.
+
+Bug Fixes
+
+- Keep saved invoices clean when created from presets; dismiss save warnings only after successful persistence and retain drafts when saving fails.
+- Keep the date picker, invoice lists and PDFs on the same local calendar date, initialize new invoice dates immediately, and correctly clear optional dates.
+- Stop older or custom invoice numbers from consuming automatic sequence numbers; commit invoice and sequence updates together and preserve zero padding.
+- Decode all preset image fields returned by the web API and supply the missing-layout message to standalone PDF exports.
+
 ## 2026-09-14, version 2.8.0
 
 New features & improvements

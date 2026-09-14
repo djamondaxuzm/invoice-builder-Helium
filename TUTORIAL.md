@@ -2,6 +2,20 @@
 
 > 💡 **Note:** The interface is fully responsive and works well on resizable windows, making it suitable for users on Linux tiling window managers, small screens, or any desktop setup.
 
+## Export a billing period
+
+1. Save the individual daily invoices as usual.
+2. Open **Invoices → Billing period PDF**.
+3. Optionally enter **From date** and **To date**. Both endpoints are included; changing either clears the current selection.
+4. Select invoices with the same business, client and currency. **Select shown** selects every invoice currently listed; clear any incompatible selections before exporting.
+5. Choose **Download PDF**. Invoices appear in date order with their line items and totals, followed by the period total, paid amount and balance due. Paid invoices count as settled; overpayments remain a credit.
+
+For invoices 001–007, select those seven invoices to produce one statement covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. It does not merge original PDF attachments or save a reusable billing-period record. Labels in this initial billing-period export are English.
+
+### Invoice save and date behavior
+
+New invoices start with today's local date. Picking a date uses that same local calendar day in the invoice list and PDF; clearing an optional due date removes it from the form. A successful save clears the unsaved-changes warning. A failed save keeps the draft open for correction and retry.
+
 ## Database creation screen
 
 The first screen of the application lets you choose how you want to work with your database.

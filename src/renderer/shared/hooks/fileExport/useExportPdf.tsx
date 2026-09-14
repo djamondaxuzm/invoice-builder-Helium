@@ -2,6 +2,7 @@ import { pdf } from '@react-pdf/renderer';
 import { parseISO } from 'date-fns';
 import { useCallback, useMemo } from 'react';
 import { PDFDocument } from '../../../pages/invoices/Preview/PDFDocument';
+import i18n from '../../../i18n';
 import { MONTH_NAMES } from '../../../state/constant';
 import { InvoiceType } from '../../enums/invoiceType';
 import type { AttachmentURL, InvoiceFromData, PdfTexts } from '../../types/invoice';
@@ -110,6 +111,7 @@ export const createPdfBlob = async (invoiceForm: InvoiceFromData, storeSettings:
 
   const blob = await pdf(
     <PDFDocument
+      layoutRequired={i18n.t('common.layoutRequired')}
       invoiceForm={invoiceForm}
       storeSettings={storeSettings}
       logoUrl={logoUrl}

@@ -1,3 +1,4 @@
+import { Button } from '@mui/material';
 import { useCallback, useMemo, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CRUDPage } from '../../shared/components/layout/crudPage/CRUDPage';
@@ -25,11 +26,13 @@ import { NewActionDropdown } from './Dropdowns/NewActionDropdown';
 import { Form } from './Form';
 import { EditPreviewToggle } from './Form/EditPreviewToggle';
 import { List } from './List';
+import { BillingPeriodDialog } from './BillingPeriodDialog';
 
 interface Props {
   type: InvoiceType;
 }
 export const InvoicesPage: FC<Props> = ({ type }) => {
+  const [billingPeriodOpen, setBillingPeriodOpen] = useState(false);
   const { t } = useTranslation();
   const clientsOptions = useAppSelector(selectClientsSnapshotsOptions);
   const businessesOptions = useAppSelector(selectBusinessesSnapshotsOptions);
@@ -227,8 +230,18 @@ export const InvoicesPage: FC<Props> = ({ type }) => {
 
   return (
     <>
+      {billingPeriodOpen && settings && (
+        <BillingPeriodDialog settings={settings} onClose={() => setBillingPeriodOpen(false)} />
+      )}
       <CRUDPage<Invoice, InvoiceAdd, InvoiceUpdate>
         componentId="invoices"
+        listActions={
+          type === InvoiceType.invoice ? (
+            <Button variant="outlined" disabled={!settings} onClick={() => setBillingPeriodOpen(true)}>
+              Billing period PDF
+            </Button>
+          ) : undefined
+        }
         renderCustomButtons={() => {
           return <EditPreviewToggle mode={mode} setMode={setMode} />;
         }}
