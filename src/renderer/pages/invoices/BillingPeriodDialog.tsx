@@ -90,7 +90,8 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
       <DialogContent>
         <Typography sx={{ mb: 2 }}>
           Select invoices for one business, client, and currency. The PDF includes each invoice’s items and a combined
-          total. Your invoices remain available individually.
+          total. The first invoice in date order supplies the logo, colors, and font. Your invoices remain available
+          individually.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1, mb: 2 }}>
           <Datepicker

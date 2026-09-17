@@ -1232,3 +1232,12 @@ To generate valid UBL/Peppol XML or XRechnung (UBL 2.1) XML, additional fields a
 >
 > Use a UBL Peppol XML validator (e.g., [https://peppolvalidator.com/](https://peppolvalidator.com/)) to ensure compliance before sending.
 > Use a XRechnung (UBL 2.1) XML validator (e.g., [https://validator.invoice-portal.de/](https://validator.invoice-portal.de/)) to ensure compliance before sending.
+
+
+### Compact billing-period branding and logos
+
+Billing-period PDFs use the first selected invoice in chronological order for the saved company logo, contact details, accent color, font family, logo size, and A4/Letter paper choice. They keep the compact statement layout rather than copying every invoice page. Select invoices with matching branding if you want a uniform period. Unnecessary duplicate subtotals are omitted when there are no adjustments.
+
+Company logo uploads accept files up to 20 MB. After cropping, PNG/JPEG logos of at least 128 KB are checked for optimization: images are reduced to at most 1024 pixels on the longest edge, preserving their aspect ratio; PNG transparency is retained. A replacement is used only when it is smaller and has the same image type. Small images are not enlarged. Original data is retained when optimization is unsupported or fails. The optimized business logo is used by newly created invoice snapshots.
+
+Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. The billing-period logo is embedded once in the statement header.
