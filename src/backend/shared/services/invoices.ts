@@ -485,20 +485,23 @@ const processSequenceOnUpdate = async (
   return processSequence(db, handlers, data);
 };
 
-const setPaidAtAndClosedAt = (invoice: Invoice): Invoice => {
+const setPaidAtAndClosedAt = (invoice: Invoice, previous?: Invoice): Invoice => {
   const now = new Date().toISOString();
-  if (invoice.status === InvoiceStatus.paid) {
-    invoice.paidAt = now;
-    invoice.closedAt = undefined;
-  } else if (invoice.status === InvoiceStatus.closed) {
-    invoice.closedAt = now;
-    invoice.paidAt = undefined;
-  } else {
-    invoice.paidAt = undefined;
-    invoice.closedAt = undefined;
-  }
-
-  return invoice;
+  return {
+    ...invoice,
+    paidAt:
+      invoice.status === InvoiceStatus.paid
+        ? previous?.status === InvoiceStatus.paid
+          ? (previous.paidAt ?? now)
+          : now
+        : undefined,
+    closedAt:
+      invoice.status === InvoiceStatus.closed
+        ? previous?.status === InvoiceStatus.closed
+          ? (previous.closedAt ?? now)
+          : now
+        : undefined
+  };
 };
 
 type SequenceHandler = (data: InvoiceSequence, isUpdate?: boolean) => Promise<Response<number>>;
@@ -1004,7 +1007,7 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       return { success: false, key: 'error.invoiceNotFound' };
     }
 
-    const formatedData = setPaidAtAndClosedAt(data);
+    const formatedData = setPaidAtAndClosedAt(data, currentInvoice);
 
     const result = await handleInvoice(formatedData, true);
     if (!result.success || !data.id) {

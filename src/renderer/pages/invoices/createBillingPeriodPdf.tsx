@@ -2,10 +2,13 @@ import { pdf } from '@react-pdf/renderer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import type { Settings } from '../../shared/types/settings';
 import type { buildBillingPeriod } from '../../shared/utils/billingPeriod';
+import { getOptimizedLogoUrl } from '../../shared/utils/logoImage';
 import { BillingPeriodPDF } from './BillingPeriodPDF';
 
 export const createBillingPeriodPdf = async (period: ReturnType<typeof buildBillingPeriod>, settings: Settings) => {
-  const rendered = await pdf(<BillingPeriodPDF period={period} settings={settings} />).toBlob();
+  const business = period.rows[0].invoice.invoiceBusinessSnapshot;
+  const logoUrl = await getOptimizedLogoUrl(business?.businessLogo, business?.businessFileType);
+  const rendered = await pdf(<BillingPeriodPDF period={period} settings={settings} logoUrl={logoUrl} />).toBlob();
   const document = await PDFDocument.load(await rendered.arrayBuffer());
   const font = await document.embedFont(StandardFonts.Helvetica);
   const pages = document.getPages();
