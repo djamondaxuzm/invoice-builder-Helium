@@ -22,7 +22,7 @@ vi.mock('../assets/inter/Inter_18pt-Bold.ttf', () => ({
 }));
 
 it.each([FontFamily.inter, FontFamily.helvetica, FontFamily.timesRoman, FontFamily.courier])(
-  'embeds the saved logo once and uses the %s style on a compact letter statement',
+  'embeds the saved logo once and uses the %s style on a combined letter statement',
   async fontFamily => {
     const first = invoice(1);
     const logo = process.env.BILLING_LOGO_SAMPLE
@@ -71,7 +71,7 @@ it('exports all seven daily invoices to a valid paginated PDF', async () => {
   const blob = await createBillingPeriodPdf(period, settings);
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const document = await PDFDocument.load(bytes);
-  expect(document.getPageCount()).toBeGreaterThan(0);
+  expect(document.getPageCount()).toBe(8);
   expect(document.getTitle()).toBe('Billing period 2026-09-01 to 2026-09-07');
   // Optional evidence output for visual inspection without leaving files in normal test runs.
   if (process.env.BILLING_PDF_OUTPUT) {

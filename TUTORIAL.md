@@ -8,9 +8,9 @@
 2. Open **Invoices → Billing period PDF**.
 3. Optionally enter **From date** and **To date**. Both endpoints are included; changing either clears the current selection.
 4. Select invoices with the same business, client and currency. **Select shown** selects every invoice currently listed; clear any incompatible selections before exporting.
-5. Choose **Download PDF**. Invoices appear in date order with their line items and totals, followed by the period total, paid amount and balance due. Paid invoices count as settled; overpayments remain a credit.
+5. Choose **Download PDF**. Each invoice starts on its own page in date order, with item quantities, unit prices, taxes, subtotal and customer notes. Saved PNG/JPEG receipt images follow their invoice. The final summary lists all invoices, charges before tax, tax, total billed, payments and balance due. Paid invoices count as settled; overpayments remain a credit.
 
-For invoices 001–007, select those seven invoices to produce one statement covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. It does not merge original PDF attachments or save a reusable billing-period record. Labels in this initial billing-period export are English.
+For invoices 001–007, select those seven invoices to produce one combined document covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. Receipt images are supporting documents and never add charges to the total. Unsupported attachment types produce an error instead of being silently omitted. The export does not merge PDF attachments or save a reusable billing-period record. Labels are English; dates use your selected date format.
 
 ### Invoice save and date behavior
 
@@ -1234,10 +1234,10 @@ To generate valid UBL/Peppol XML or XRechnung (UBL 2.1) XML, additional fields a
 > Use a XRechnung (UBL 2.1) XML validator (e.g., [https://validator.invoice-portal.de/](https://validator.invoice-portal.de/)) to ensure compliance before sending.
 
 
-### Compact billing-period branding and logos
+### Combined billing-period branding and logos
 
-Billing-period PDFs use the first selected invoice in chronological order for the saved company logo, contact details, accent color, font family, logo size, and A4/Letter paper choice. They keep the compact statement layout rather than copying every invoice page. Select invoices with matching branding if you want a uniform period. Unnecessary duplicate subtotals are omitted when there are no adjustments.
+Billing-period PDFs use a consistent invoice layout with a company header, shaded item table, invoice subtotal and notes. Each invoice preserves its saved company logo, contact details, accent color, font family, logo size and A4/Letter paper choice. The final summary uses the first invoice's branding and highlights the combined balance. Select invoices with matching branding if you want a uniform period. Long item lists and descriptions continue onto additional pages, and every page includes its position in the complete document.
 
 Company logo uploads accept files up to 20 MB. After cropping, PNG/JPEG logos of at least 128 KB are checked for optimization: images are reduced to at most 1024 pixels on the longest edge, preserving their aspect ratio; PNG transparency is retained. A replacement is used only when it is smaller and has the same image type. Small images are not enlarged. Original data is retained when optimization is unsupported or fails. The optimized business logo is used by newly created invoice snapshots.
 
-Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. The billing-period logo is embedded once in the statement header.
+Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. Logos appear on the invoice pages and final summary. Receipt images retain their original resolution for readability.

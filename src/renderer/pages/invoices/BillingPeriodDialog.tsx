@@ -89,9 +89,9 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
       <DialogTitle>Billing period PDF</DialogTitle>
       <DialogContent>
         <Typography sx={{ mb: 2 }}>
-          Select invoices for one business, client, and currency. The PDF includes each invoice’s items and a combined
-          total. The first invoice in date order supplies the logo, colors, and font. Your invoices remain available
-          individually.
+          Select invoices for one business, client, and currency. Each invoice starts on its own page, followed by its
+          receipt attachments. A final summary lists all subtotals and the combined balance due. Each invoice keeps its
+          saved branding; the first invoice supplies the summary branding.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1, mb: 2 }}>
           <Datepicker

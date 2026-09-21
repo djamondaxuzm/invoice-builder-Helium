@@ -69,7 +69,7 @@ describe('consistent date displays', () => {
       <BillingPeriodPDF period={buildBillingPeriod([invoice(1), invoice(2)], configured)} settings={configured} />
     );
     expect(screen.getByTestId('document').title).toBe(`Billing period ${first} to ${last}`);
-    expect(screen.getByText(`${first} - ${last}`)).toBeTruthy();
+    expect(screen.getAllByText(`${first} - ${last}`).length).toBeGreaterThan(0);
   });
 });
 
