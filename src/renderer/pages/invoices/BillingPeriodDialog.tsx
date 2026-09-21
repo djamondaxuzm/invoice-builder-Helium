@@ -10,11 +10,12 @@ import {
   DialogTitle,
   FormControlLabel,
   Stack,
-  TextField,
   Typography
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
+import { Datepicker } from '../../shared/components/inputs/datepicker/Datepicker';
+import { formatDate } from '../../shared/utils/formatFunctions';
 import { getApi } from '../../shared/api/restApi';
 import { InvoiceType } from '../../shared/enums/invoiceType';
 import type { Invoice } from '../../shared/types/invoice';
@@ -48,24 +49,28 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
       cancelled = true;
     };
   }, []);
+  const datedInvoices = useMemo(
+    () => invoices.map(invoice => ({ invoice, date: billingDate(invoice.issuedAt) })),
+    [invoices]
+  );
   const visible = useMemo(
     () =>
-      invoices
-        .filter(invoice => {
-          const date = billingDate(invoice.issuedAt);
-          return date && (!from || date >= from) && (!to || date <= to);
-        })
+      datedInvoices
+        .filter(({ date }) => date && (!from || date >= from) && (!to || date <= to))
         .sort(
           (a, b) =>
-            billingDate(a.issuedAt).localeCompare(billingDate(b.issuedAt)) ||
-            a.invoiceNumber.localeCompare(b.invoiceNumber, undefined, { numeric: true })
-        ),
-    [invoices, from, to]
+            a.date.localeCompare(b.date) ||
+            a.invoice.invoiceNumber.localeCompare(b.invoice.invoiceNumber, undefined, { numeric: true })
+        )
+        .map(({ invoice }) => invoice),
+    [datedInvoices, from, to]
   );
-  const chosen = invoices.filter(invoice => selected.includes(invoice.id!));
+  const selectedIds = useMemo(() => new Set(selected), [selected]);
+  const chosen = useMemo(() => invoices.filter(invoice => selectedIds.has(invoice.id!)), [invoices, selectedIds]);
   const validation =
     from && to && from > to ? 'The end date must be on or after the start date.' : billingSelectionError(chosen);
   const download = async () => {
+    if (loading || exporting || validation) return;
     setExporting(true);
     setError('');
     try {
@@ -84,29 +89,28 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
       <DialogTitle>Billing period PDF</DialogTitle>
       <DialogContent>
         <Typography sx={{ mb: 2 }}>
-          Select invoices for one business, client, and currency. The PDF includes each invoice’s items and a combined
-          total. Your invoices remain available individually.
+          Select invoices for one business, client, and currency. Each invoice starts on its own page, followed by its
+          receipt attachments. A final summary lists all subtotals and the combined balance due. Each invoice keeps its
+          saved branding; the first invoice supplies the summary branding.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1, mb: 2 }}>
-          <TextField
+          <Datepicker
             label="From date"
-            type="date"
+            format={settings.dateFormat}
             value={from}
             disabled={exporting}
-            slotProps={{ inputLabel: { shrink: true } }}
-            onChange={event => {
-              setFrom(event.target.value);
+            onChange={value => {
+              setFrom(value ? billingDate(value) : '');
               setSelected([]);
             }}
           />
-          <TextField
+          <Datepicker
             label="To date"
-            type="date"
+            format={settings.dateFormat}
             value={to}
             disabled={exporting}
-            slotProps={{ inputLabel: { shrink: true } }}
-            onChange={event => {
-              setTo(event.target.value);
+            onChange={value => {
+              setTo(value ? billingDate(value) : '');
               setSelected([]);
             }}
           />
@@ -137,7 +141,7 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
                 control={
                   <Checkbox
                     disabled={exporting}
-                    checked={selected.includes(invoice.id!)}
+                    checked={selectedIds.has(invoice.id!)}
                     onChange={(_, checked) =>
                       setSelected(current =>
                         checked ? [...current, invoice.id!] : current.filter(id => id !== invoice.id)
@@ -145,7 +149,7 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
                     }
                   />
                 }
-                label={`${billingDate(invoice.issuedAt)} · ${invoice.invoiceFullNumber || invoice.invoiceNumber} · ${invoice.invoiceBusinessSnapshot?.businessName ?? ''} · ${invoice.invoiceClientSnapshot?.clientName ?? ''} · ${invoice.invoiceCurrencySnapshot?.currencyCode ?? ''}`}
+                label={`${formatDate(invoice.issuedAt, settings.dateFormat)} · ${invoice.invoiceFullNumber || invoice.invoiceNumber} · ${invoice.invoiceBusinessSnapshot?.businessName ?? ''} · ${invoice.invoiceClientSnapshot?.clientName ?? ''} · ${invoice.invoiceCurrencySnapshot?.currencyCode ?? ''}`}
               />
             ))}
           </Box>

@@ -8,6 +8,7 @@ import { InvoiceType } from '../../enums/invoiceType';
 import type { AttachmentURL, InvoiceFromData, PdfTexts } from '../../types/invoice';
 
 import type { Settings } from '../../types/settings';
+import { getOptimizedLogoUrl } from '../../utils/logoImage';
 import { toDataUrl } from '../../utils/dataUrlFunctions';
 import { usePdfTexts } from '../pdf/usePdfTexts';
 
@@ -41,20 +42,11 @@ export const getSignatureUrls = async (invoiceForm?: InvoiceFromData) => {
   return signatureUrl;
 };
 
-export const getLogoUrl = async (invoiceForm?: InvoiceFromData) => {
-  if (!invoiceForm) return;
-
-  let logoUrl: string | undefined;
-
-  if (invoiceForm.invoiceBusinessSnapshot?.businessLogo) {
-    logoUrl = await toDataUrl(
-      invoiceForm.invoiceBusinessSnapshot?.businessLogo,
-      invoiceForm.invoiceBusinessSnapshot?.businessFileType
-    );
-  }
-
-  return logoUrl;
-};
+export const getLogoUrl = (invoiceForm?: InvoiceFromData) =>
+  getOptimizedLogoUrl(
+    invoiceForm?.invoiceBusinessSnapshot?.businessLogo,
+    invoiceForm?.invoiceBusinessSnapshot?.businessFileType
+  );
 
 export const getQRCodeUrls = async (invoiceForm?: InvoiceFromData) => {
   if (!invoiceForm) return;

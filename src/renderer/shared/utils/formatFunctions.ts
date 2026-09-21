@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { endOfDay, format, parseISO, startOfDay } from 'date-fns';
 import { AmountFormat } from '../enums/amountFormat';
 import { CurrencyFormat } from '../enums/currencyFormat';
 import type { DateFormat } from '../enums/dateFormat';
@@ -27,6 +27,11 @@ export const formatDate = (date: string | Date, pattern: DateFormat) => {
 
   return format(d, pattern);
 };
+
+export const localDateRange = (from: string | Date, to: string | Date) => ({
+  from: startOfDay(typeof from === 'string' ? parseISO(from) : from).toISOString(),
+  to: endOfDay(typeof to === 'string' ? parseISO(to) : to).toISOString()
+});
 
 export const getFormattedLabel = (data: { label: string; symbol: string; code: string }) => {
   return data.label.replace('{symbol}', data.symbol || '').replace('{code}', data.code || '');

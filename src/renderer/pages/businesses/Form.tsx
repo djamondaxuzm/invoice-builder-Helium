@@ -7,6 +7,7 @@ import { useForm } from '../../shared/hooks/form/useForm';
 import { useFormDirtyCheck } from '../../shared/hooks/form/useFormDirtyCheck';
 import type { Business, BusinessFromData } from '../../shared/types/business';
 import { toDataUrl, toUint8Array } from '../../shared/utils/dataUrlFunctions';
+import { optimizeLogo } from '../../shared/utils/logoImage';
 import { validators } from '../../shared/utils/validatorFunctions';
 import { useAppSelector } from '../../state/configureStore';
 import { selectSettings } from '../../state/pageSlice';
@@ -55,19 +56,36 @@ export const Form: FC<Props> = ({ handleChange = () => {}, business }) => {
   });
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
 
+  const uploadVersion = useRef(0);
+  const [optimizingLogo, setOptimizingLogo] = useState(false);
+  useEffect(() => {
+    uploadVersion.current += 1;
+    setOptimizingLogo(false);
+    return () => {
+      uploadVersion.current += 1;
+    };
+  }, [business]);
+
   const onUpload = async (file?: Blob, filename?: string) => {
-    if (file) {
-      const fileUnitArray = await toUint8Array(t, file);
-      if (fileUnitArray)
-        setForm(prev => ({
-          ...prev,
-          logo: fileUnitArray,
-          fileSize: file.size,
-          fileType: file.type,
-          fileName: filename
-        }));
-    } else {
-      setForm(prev => ({ ...prev, logo: undefined, fileSize: undefined, fileType: undefined, fileName: undefined }));
+    const version = ++uploadVersion.current;
+    setOptimizingLogo(!!file);
+    try {
+      if (file) {
+        const optimized = await optimizeLogo(file);
+        const fileUnitArray = await toUint8Array(t, optimized);
+        if (fileUnitArray && version === uploadVersion.current)
+          setForm(prev => ({
+            ...prev,
+            logo: fileUnitArray,
+            fileSize: optimized.size,
+            fileType: optimized.type,
+            fileName: filename
+          }));
+      } else {
+        setForm(prev => ({ ...prev, logo: undefined, fileSize: undefined, fileType: undefined, fileName: undefined }));
+      }
+    } finally {
+      if (version === uploadVersion.current) setOptimizingLogo(false);
     }
   };
 
@@ -139,15 +157,15 @@ export const Form: FC<Props> = ({ handleChange = () => {}, business }) => {
 
     handleChange({
       business: form,
-      isFormValid: valid,
+      isFormValid: valid && !optimizingLogo,
       description: t('common.invalidForm')
     });
-  }, [form, errors, handleChange, t]);
+  }, [form, errors, handleChange, t, optimizingLogo]);
 
   return (
     <Grid container spacing={2}>
       <Grid size={{ xs: 12, md: 12 }} sx={{ display: 'flex', justifyContent: 'center' }}>
-        <UploadImage onUpload={onUpload} imgUrl={logoUrl} />
+        <UploadImage onUpload={onUpload} imgUrl={logoUrl} maxSizeMB={20} />
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
