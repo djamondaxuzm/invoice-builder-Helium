@@ -1,8 +1,16 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { BillingPeriodDialog } from '../pages/invoices/BillingPeriodDialog';
 import { invoice, settings } from './billingPeriodFixtures';
 import { selectBillingRows } from '../shared/utils/billingSelection';
 import { InvoiceType } from '../shared/enums/invoiceType';
+const exportMocks = vi.hoisted(() => ({ load: vi.fn(), pdf: vi.fn().mockResolvedValue(new Blob()), save: vi.fn() }));
+vi.mock('../shared/utils/loadInvoiceDetails', () => ({
+  loadInvoiceDetails: (...args: unknown[]) => exportMocks.load(...args)
+}));
+vi.mock('../pages/invoices/createBillingPeriodPdf', () => ({
+  createBillingPeriodPdf: (...args: unknown[]) => exportMocks.pdf(...args)
+}));
+vi.mock('file-saver', () => ({ saveAs: (...args: unknown[]) => exportMocks.save(...args) }));
 
 vi.mock('../shared/api/restApi', () => ({
   getApi: () => ({
@@ -26,6 +34,23 @@ vi.mock('../shared/components/inputs/datepicker/Datepicker', () => ({
   )
 }));
 afterEach(cleanup);
+
+it('hydrates only selected invoices before exporting and stops on a receipt load failure', async () => {
+  exportMocks.load.mockImplementation(async row => ({ ...row, attachmentsLoaded: true }));
+  render(<BillingPeriodDialog settings={settings} onClose={vi.fn()} />);
+  await screen.findByText('Example Client');
+  fireEvent.change(screen.getByLabelText('Client'), { target: { value: '2' } });
+  const rows = screen.getAllByRole('option').filter(row => row.getAttribute('aria-selected') !== null);
+  fireEvent.click(rows[0]);
+  fireEvent.click(rows[2], { ctrlKey: true });
+  fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+  await waitFor(() => expect(exportMocks.save).toHaveBeenCalledTimes(1));
+  expect(exportMocks.load.mock.calls.map(([row]) => row.id)).toEqual([1, 3]);
+  exportMocks.load.mockRejectedValueOnce(new Error('Receipt load failed'));
+  fireEvent.click(screen.getByRole('button', { name: 'Download PDF' }));
+  await screen.findByText('Receipt load failed');
+  expect(exportMocks.save).toHaveBeenCalledTimes(1);
+});
 
 it('requires a client, sorts rows by date, supports Ctrl/Shift selection and clears on client changes', async () => {
   render(<BillingPeriodDialog settings={settings} onClose={vi.fn()} />);

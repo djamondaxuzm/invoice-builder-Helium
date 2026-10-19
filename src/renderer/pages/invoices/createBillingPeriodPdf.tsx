@@ -9,6 +9,7 @@ export const createBillingPeriodPdf = async (period: ReturnType<typeof buildBill
   const assets = [];
   // Prepare sequentially to bound peak memory for image-heavy invoice selections.
   for (const { invoice } of period.rows) {
+    if (invoice.attachmentsLoaded === false) throw new Error('Load the complete invoice before exporting receipts.');
     const business = invoice.invoiceBusinessSnapshot;
     const logoUrl = await getOptimizedLogoUrl(business?.businessLogo, business?.businessFileType);
     const attachments = (invoice.invoiceAttachments ?? []).map(attachment => {

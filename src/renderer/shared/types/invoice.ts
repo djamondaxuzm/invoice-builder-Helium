@@ -373,6 +373,7 @@ export interface InvoiceBusinessSnapshotsWeb extends InvoiceBusinessSnapshotsMet
 }
 
 export interface InvoiceMeta {
+  attachmentsLoaded?: boolean;
   id: number;
   invoiceType: InvoiceType;
   convertedFromQuotationId?: number;
@@ -508,6 +509,7 @@ export interface InvoiceUpdateWeb extends InvoiceAddWeb {
 }
 
 export interface InvoiceFromData {
+  attachmentsLoaded?: boolean;
   id?: number;
   invoiceType?: InvoiceType;
   convertedFromQuotationId?: number;

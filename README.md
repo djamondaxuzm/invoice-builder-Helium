@@ -488,3 +488,6 @@ Want to be a part of this project’s journey? You can support it here: [Buy Me 
 See the full list of supporters here: [Supporters](SUPPORTERS.md)
 
 Every contribution counts, even a small one, and your name will appear here as a supporter of Invoice Builder.
+
+Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
+

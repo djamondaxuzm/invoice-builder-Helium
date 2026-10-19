@@ -105,7 +105,11 @@ declare global {
       }) => Promise<Response<NextSequenceData | undefined>>;
       getEInvoiceXML: (data: { invoiceId: number; einvoice: EInvoice }) => Promise<Response<Uint8Array | undefined>>;
       getCustomHeaders: (type: InvoiceType) => Promise<Response<CustomFieldMeta[]>>;
-      getAllInvoices: (type?: InvoiceType, filter?: FilterData[]) => Promise<Response<Invoice[]>>;
+      getAllInvoices: (
+        type?: InvoiceType,
+        filter?: FilterData[],
+        options?: { id?: number; attachmentMetadataOnly?: boolean }
+      ) => Promise<Response<Invoice[]>>;
       deleteInvoice: (id: number) => Promise<Response<unknown>>;
       addInvoice: (data: InvoiceAdd) => Promise<Response<Invoice>>;
       updateInvoice: (data: InvoiceUpdate) => Promise<Response<Invoice>>;

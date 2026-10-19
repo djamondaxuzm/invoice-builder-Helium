@@ -20,7 +20,9 @@ export const initInvoicesHandlers = (db: DatabaseAdapter) => {
 
   ipcMain.handle('get-next-sequence', async (_event, data) => invoicesService.getNextSequence(db, data));
   ipcMain.handle('get-custom-headers', async (_event, type) => invoicesService.getCustomHeaders(db, type));
-  ipcMain.handle('get-all-invoices', async (_event, type, filter) => invoicesService.getAllInvoices(db, type, filter));
+  ipcMain.handle('get-all-invoices', async (_event, type, filter, options) =>
+    invoicesService.getAllInvoices(db, type, filter, options)
+  );
   ipcMain.handle('delete-invoice', async (_event, id: number) => invoicesService.deleteInvoice(db, id));
   ipcMain.handle('add-invoice', async (_event, data: Invoice) => invoicesService.addInvoice(db, data));
   ipcMain.handle('update-invoice', async (_event, data: Invoice) => invoicesService.updateInvoice(db, data));

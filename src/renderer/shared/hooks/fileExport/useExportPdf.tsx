@@ -13,6 +13,7 @@ import { toDataUrl } from '../../utils/dataUrlFunctions';
 import { usePdfTexts } from '../pdf/usePdfTexts';
 
 export const getAttachmentsUrl = async (invoiceForm?: InvoiceFromData): Promise<AttachmentURL[]> => {
+  if (invoiceForm?.attachmentsLoaded === false) throw new Error('Load the complete invoice before exporting receipts.');
   const attachments = invoiceForm?.invoiceAttachments ?? [];
 
   if (attachments.length === 0) {

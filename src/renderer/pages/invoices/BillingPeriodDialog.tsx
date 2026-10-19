@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { selectBillingRows } from '../../shared/utils/billingSelection';
+import { loadInvoiceDetails } from '../../shared/utils/loadInvoiceDetails';
 import { saveAs } from 'file-saver';
 import { Datepicker } from '../../shared/components/inputs/datepicker/Datepicker';
 import { formatDate } from '../../shared/utils/formatFunctions';
@@ -37,7 +38,7 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
   useEffect(() => {
     let cancelled = false;
     getApi()
-      .getAllInvoices(InvoiceType.invoice)
+      .getAllInvoices(InvoiceType.invoice, undefined, { attachmentMetadataOnly: true })
       .then(response => {
         if (cancelled) return;
         if (!response.success) throw new Error('Could not load invoices. Close this window and try again.');
@@ -85,7 +86,7 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
     [datedInvoices, from, to, clientId]
   );
   const selectedIds = useMemo(() => new Set(selected), [selected]);
-  const chosen = useMemo(() => invoices.filter(invoice => selectedIds.has(invoice.id!)), [invoices, selectedIds]);
+  const chosen = useMemo(() => visible.filter(invoice => selectedIds.has(invoice.id!)), [visible, selectedIds]);
   const validation =
     from && to && from > to ? 'The end date must be on or after the start date.' : billingSelectionError(chosen);
   const download = async () => {
@@ -93,7 +94,10 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
     setExporting(true);
     setError('');
     try {
-      const period = buildBillingPeriod(chosen, settings);
+      const complete: Invoice[] = [];
+      // Fetch only the selected invoices, sequentially to bound image-transfer memory.
+      for (const invoice of chosen) complete.push(await loadInvoiceDetails(invoice));
+      const period = buildBillingPeriod(complete, settings);
       const { createBillingPeriodPdf } = await import('./createBillingPeriodPdf');
       const blob = await createBillingPeriodPdf(period, settings);
       saveAs(blob, `billing-period-${period.from}-to-${period.to}.pdf`);

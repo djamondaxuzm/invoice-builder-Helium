@@ -135,6 +135,7 @@ export interface InvoiceLayoutSnapshots {
 }
 
 export interface Invoice {
+  attachmentsLoaded?: boolean;
   id?: number;
   invoiceType: InvoiceType;
   convertedFromQuotationId?: number;

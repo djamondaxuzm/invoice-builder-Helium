@@ -38,7 +38,15 @@ export const initInvoicesController = (app: Express) => {
   app.get('/api/invoices', requireDB, async (req: Request, res: Response) => {
     const type = req.query.type as 'invoice' | 'quotation' | undefined;
     const filter = parseFilter(req.query.filter as string);
-    const result = await invoicesService.getAllInvoices(dbInstance!, type, filter);
+    const id = req.query.id === undefined ? undefined : Number(req.query.id);
+    if (id !== undefined && (!Number.isSafeInteger(id) || id <= 0)) {
+      res.status(400).json({ success: false, message: 'Invalid invoice ID.' });
+      return;
+    }
+    const result = await invoicesService.getAllInvoices(dbInstance!, type, filter, {
+      id,
+      attachmentMetadataOnly: req.query.attachmentMetadataOnly === 'true'
+    });
 
     const resultModified = encodeResultInvoices(result);
 

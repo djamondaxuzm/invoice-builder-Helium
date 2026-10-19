@@ -14,11 +14,14 @@ import type { AttachmentURL, InvoiceFromData } from '../../../shared/types/invoi
 import { useAppSelector } from '../../../state/configureStore';
 import { selectSettings } from '../../../state/pageSlice';
 import { PDFDocument } from './PDFDocument';
+import { Alert, Button } from '@mui/material';
+import { usePreviewInvoice } from '../../../shared/hooks/pdf/usePreviewInvoice';
 
 interface Props {
   invoiceForm?: InvoiceFromData;
 }
-const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
+const PreviewCoreComponent: FC<Props> = ({ invoiceForm: currentInvoice }) => {
+  const invoiceForm = usePreviewInvoice(currentInvoice);
   const { t } = useTranslation();
   const storeSettings = useAppSelector(selectSettings);
   const [logoUrl, setLogoUrl] = useState<string | undefined>();
@@ -28,6 +31,8 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
   const [signatureUrl, setSignatureUrl] = useState<string | undefined>();
   const [qrCodeUrl, setQrCodeUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
   const pdfTextsDefaults = usePdfTexts({
     labelUpperCase: invoiceForm?.invoiceCustomization?.labelUpperCase,
     language: invoiceForm?.language
@@ -68,6 +73,7 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
     setWatermarkPaidUrl(undefined);
     setQrCodeUrl(undefined);
     setLoading(true);
+    setError('');
 
     const loadData = async () => {
       const [logo, watermark, watermarkPaid, attachments, signature, qrCode] = await Promise.all([
@@ -90,14 +96,25 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
       }
     };
 
-    loadData();
+    void loadData().catch(cause => {
+      if (!cancelled) {
+        setError(cause instanceof Error ? cause.message : 'Could not load preview images.');
+        setLoading(false);
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [imageForm]);
+  }, [imageForm, retry]);
 
   if (loading) return null;
+  if (error)
+    return (
+      <Alert severity="error" action={<Button onClick={() => setRetry(value => value + 1)}>Retry</Button>}>
+        {error}
+      </Alert>
+    );
 
   return (
     <PDFViewer

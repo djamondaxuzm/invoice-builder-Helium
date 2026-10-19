@@ -417,3 +417,6 @@ Initial release with the following functionality
 - Windows & Linux builds
 - Invoice/Quote state tracking (unpaid, partially paid, paid, closed; quote open/closed)
 - Automatic snapshotting of business, client, item, and currency data for historical accuracy
+
+Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
+

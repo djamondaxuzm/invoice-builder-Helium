@@ -254,6 +254,114 @@ describe('receipt persistence and linked definitions', () => {
       expect(invoice.invoiceBusinessSnapshot?.businessLogo).toBeNull();
   });
 
+  it('loads receipt metadata without blobs and retrieves complete details for only the requested invoice', async () => {
+    const saved = await add('001', {
+      invoiceAttachments: [
+        {
+          fileName: 'r.png',
+          fileType: 'image/png',
+          fileSize: 3,
+          data: new Uint8Array([1, 2, 3])
+        } as Invoice['invoiceAttachments'][number]
+      ]
+    });
+    await add('002');
+    const summaries = await getAllInvoices(db, undefined, undefined, { attachmentMetadataOnly: true });
+    const summary = summaries.data.find(row => row.id === saved.id)!;
+    expect(summary.attachmentsLoaded).toBe(false);
+    expect(summary.invoiceAttachments[0].data.byteLength).toBe(0);
+    expect(summary.invoiceAttachments[0].fileSize).toBe(3);
+    const full = await getAllInvoices(db, undefined, undefined, { id: saved.id });
+    expect(full.data).toHaveLength(1);
+    expect(full.data[0].attachmentsLoaded).toBe(true);
+    expect(Array.from(full.data[0].invoiceAttachments[0].data)).toEqual([1, 2, 3]);
+    await expect(getAllInvoices(db, undefined, undefined, { id: 0 })).rejects.toThrow('Invalid invoice ID');
+  });
+
+  it('preserves unchanged line IDs and snapshots, updates only edited data, and preserves reordered output', async () => {
+    const itemId = await db.run('INSERT INTO items (name, amount) VALUES (?, ?)', ['Labor', '10'], true);
+    const saved = await add('001', {
+      invoiceItems: ['First', 'Second'].map(
+        name =>
+          ({
+            itemId,
+            quantity: '1',
+            taxRate: 0,
+            invoiceItemSnapshot: { parentInvoiceItemId: 0, itemName: name, unitPriceCents: '1000' }
+          }) as Invoice['invoiceItems'][number]
+      )
+    });
+    const ids = saved.invoiceItems.map(item => item.id);
+    await db.run(
+      `CREATE TRIGGER no_line_delete BEFORE DELETE ON invoice_items BEGIN SELECT RAISE(ABORT, 'line deleted'); END;`
+    );
+    await db.run(
+      `CREATE TRIGGER no_line_update BEFORE UPDATE ON invoice_items BEGIN SELECT RAISE(ABORT, 'line rewritten'); END;`
+    );
+    await db.run(
+      `CREATE TRIGGER no_snapshot_update BEFORE UPDATE ON invoice_item_snapshots BEGIN SELECT RAISE(ABORT, 'snapshot rewritten'); END;`
+    );
+    const unchanged = await updateInvoice(db, { ...saved, customerNotes: 'Notes only' });
+    expect(unchanged.success).toBe(true);
+    expect((unchanged.data as Invoice).invoiceItems.map(item => item.id)).toEqual(ids);
+    await db.run('DROP TRIGGER no_line_update');
+    const changed = await updateInvoice(db, {
+      ...saved,
+      invoiceItems: saved.invoiceItems.map((item, i) => (i === 0 ? { ...item, quantity: '3' } : item))
+    });
+    expect(changed.success).toBe(true);
+    expect((changed.data as Invoice).invoiceItems[0].quantity).toBe('3');
+    expect((changed.data as Invoice).invoiceItems.map(item => item.id)).toEqual(ids);
+    await db.run('DROP TRIGGER no_line_delete');
+    const reordered = await updateInvoice(db, {
+      ...(changed.data as Invoice),
+      invoiceItems: [...(changed.data as Invoice).invoiceItems].reverse()
+    });
+    expect(reordered.success).toBe(true);
+    expect((reordered.data as Invoice).invoiceItems.map(item => item.invoiceItemSnapshot?.itemName)).toEqual([
+      'Second',
+      'First'
+    ]);
+    const remaining = (reordered.data as Invoice).invoiceItems.slice(0, 1);
+    const removed = await updateInvoice(db, { ...(reordered.data as Invoice), invoiceItems: remaining });
+    expect(removed.success).toBe(true);
+    expect((removed.data as Invoice).invoiceItems.map(item => item.id)).toEqual([remaining[0].id]);
+  });
+
+  it('normalizes JSON custom fields and refuses payments or snapshots belonging to another invoice', async () => {
+    const itemId = await db.run('INSERT INTO items (name, amount) VALUES (?, ?)', ['Labor', '10'], true);
+    const field = { header: 'Location', value: 'Site A', alignment: 'left', sortOrder: 1 };
+    const first = await add('001', {
+      invoiceItems: [
+        {
+          itemId,
+          quantity: '1',
+          taxRate: 0,
+          customField: JSON.stringify(field),
+          invoiceItemSnapshot: { parentInvoiceItemId: 0, itemName: 'Labor', unitPriceCents: '1000' }
+        } as Invoice['invoiceItems'][number]
+      ],
+      invoicePayments: [
+        { amountCents: '100', paidAt: '2026-10-18', paymentMethod: 'Cash' } as Invoice['invoicePayments'][number]
+      ]
+    });
+    expect(first.invoiceItems[0].customField).toEqual(field);
+    const raw = await db.get<{ customField: string }>('SELECT "customField" FROM invoice_items WHERE id = ?', [
+      first.invoiceItems[0].id
+    ]);
+    expect(JSON.parse(raw!.customField)).toEqual(field);
+    const second = await add('002');
+    expect(
+      (await updateInvoice(db, { ...second, customerNotes: 'Must roll back', invoicePayments: first.invoicePayments }))
+        .success
+    ).toBe(false);
+    expect((await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [second.id]))?.customerNotes).toBeNull();
+    expect(
+      (await updateInvoice(db, { ...second, invoiceBusinessSnapshot: first.invoiceBusinessSnapshot })).success
+    ).toBe(false);
+    expect((await getAllInvoices(db, undefined, undefined, { id: first.id })).data[0].invoicePayments).toHaveLength(1);
+  });
+
   it('rolls back the master definition if snapshot synchronization fails', async () => {
     await add('001');
     const business = (await db.get<Business>('SELECT * FROM businesses WHERE id = ?', [businessId]))!;

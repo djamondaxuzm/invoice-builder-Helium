@@ -6,7 +6,10 @@ import { InvoiceType } from '../shared/enums/invoiceType';
 import type { Invoice, InvoiceFromData } from '../shared/types/invoice';
 import type { Preset } from '../shared/types/preset';
 
-const mocks = vi.hoisted(() => ({ dispatch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ dispatch: vi.fn(), load: vi.fn() }));
+vi.mock('../shared/utils/loadInvoiceDetails', () => ({
+  loadInvoiceDetails: (...args: unknown[]) => mocks.load(...args)
+}));
 vi.mock('../state/configureStore', () => ({ useAppDispatch: () => mocks.dispatch }));
 vi.mock('../shared/hooks/styleProfiles/useStyleProfileAdd', () => ({
   useStyleProfileAdd: () => ({ execute: vi.fn() })
@@ -35,6 +38,59 @@ const allowed = () =>
   mocks.dispatch.mock.calls.filter(([action]) => action.type === 'pageSlice/setAllowed').at(-1)?.[0].payload;
 
 describe('invoice saved baseline', () => {
+  it('ignores an older invoice load that completes after switching invoices', async () => {
+    let finishFirst!: (invoice: Invoice) => void;
+    mocks.load
+      .mockImplementationOnce(
+        () =>
+          new Promise<Invoice>(resolve => {
+            finishFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ id: 2, customerNotes: 'second', attachmentsLoaded: true });
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <Form
+        invoice={{ id: 1, attachmentsLoaded: false } as Invoice}
+        handleChange={onChange}
+        type={InvoiceType.invoice}
+        mode={InvoiceFormMode.edit}
+      />
+    );
+    expect(screen.queryByText('Edit')).toBeNull();
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ isFormValid: false }));
+    rerender(
+      <Form
+        invoice={{ id: 2, attachmentsLoaded: false } as Invoice}
+        handleChange={onChange}
+        type={InvoiceType.invoice}
+        mode={InvoiceFormMode.edit}
+      />
+    );
+    await waitFor(() => expect(current().customerNotes).toBe('second'));
+    finishFirst({ id: 1, customerNotes: 'first' } as Invoice);
+    await waitFor(() => expect(current().id).toBe(2));
+    fireEvent.click(screen.getByText('Edit'));
+    expect(onChange.mock.calls.at(-1)?.[0].invoice.customerNotes).toBe('edited');
+  });
+
+  it('keeps failed detail loads out of the editor and supports retry', async () => {
+    mocks.load
+      .mockRejectedValueOnce(new Error('Load failed'))
+      .mockResolvedValueOnce({ id: 3, customerNotes: 'retried' });
+    render(
+      <Form
+        invoice={{ id: 3, attachmentsLoaded: false } as Invoice}
+        type={InvoiceType.invoice}
+        mode={InvoiceFormMode.edit}
+      />
+    );
+    await screen.findByText('Load failed');
+    expect(screen.queryByText('Edit')).toBeNull();
+    fireEvent.click(screen.getByText('Retry'));
+    await waitFor(() => expect(current().customerNotes).toBe('retried'));
+  });
+
   it('does not reapply a creation preset to a saved invoice', async () => {
     const invoice = {
       id: 1,

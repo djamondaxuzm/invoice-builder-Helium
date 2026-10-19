@@ -27,8 +27,10 @@ import { generateInvoiceXML } from '../utils/einvoice/xmlProfiles';
 import { mapDatabaseError } from '../utils/errorFunctions';
 import { getWhereClauseFromFilters } from '../utils/filterFunctions';
 import { syncAttachments } from '../utils/syncAttachments';
+import { serializeCustomField, syncInvoiceItems } from '../utils/invoiceItems';
 
 type GetInvoicesOptions = {
+  attachmentMetadataOnly?: boolean;
   id?: number;
   type?: 'invoice' | 'quotation';
   filter?: FilterData[];
@@ -201,6 +203,15 @@ const handleEntity =
       let lastID: number = -1;
 
       if (isUpdate) {
+        const parent = ['parentInvoiceId', 'parentInvoiceItemId'].find(key => fields.includes(key as keyof T));
+        if (
+          parent &&
+          !(await db.get(`SELECT "id" FROM ${table} WHERE "id" = ? AND "${parent}" = ?`, [
+            data.id,
+            data[parent as keyof T]
+          ]))
+        )
+          throw new Error('The record does not belong to this invoice. Reload before saving.');
         const setClause =
           fields.map(f => `"${String(f)}" = ?`).join(', ') +
           `, "updatedAt" = ${getDefaultValue("(datetime('now'))", db.type)}`;
@@ -349,7 +360,7 @@ const processItems = async (
     const r = await handlers.handleInvoiceItems({
       ...item,
       parentInvoiceId,
-      customField: item.customField ? JSON.stringify(item.customField) : undefined
+      customField: serializeCustomField(item.customField)
     } as unknown as InvoiceItem);
     if (!r.success) {
       await rollbackOrThrow(db);
@@ -378,8 +389,13 @@ const processPayments = async (
 ) => {
   for (const payment of payments ?? []) {
     if (payment.id) {
-      const existing = await db.get(`SELECT "id" FROM invoice_payments WHERE "id" = ?`, [payment.id]);
+      const existing = await db.get<InvoicePayment>(
+        `SELECT "id", "parentInvoiceId" FROM invoice_payments WHERE "id" = ?`,
+        [payment.id]
+      );
       if (existing) {
+        if (existing.parentInvoiceId !== parentInvoiceId)
+          throw new Error('The payment does not belong to this invoice.');
         const r = await handlers.handleInvoicePayments({ ...payment, parentInvoiceId } as InvoicePayment, true);
         if (!r.success) {
           await rollbackOrThrow(db);
@@ -618,7 +634,8 @@ const getDuplicateInvoiceNumber = async (
 };
 
 const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => {
-  const { id, type, filter } = options;
+  const { id, type, filter, attachmentMetadataOnly } = options;
+  if (id !== undefined && (!Number.isSafeInteger(id) || id <= 0)) throw new Error('Invalid invoice ID.');
 
   const whereClause = filter
     ? getWhereClauseFromFilters({
@@ -668,8 +685,14 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
     invoiceLayoutSnapshots
   ] = await Promise.all([
     db.all<InvoicePayment>(`SELECT * FROM invoice_payments WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
-    db.all<InvoiceItem>(`SELECT * FROM invoice_items WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
-    db.all<InvoiceAttachment>(`SELECT * FROM attachments WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
+    db.all<InvoiceItem>(
+      `SELECT * FROM invoice_items WHERE "parentInvoiceId" IN (${placeholders}) ORDER BY "id"`,
+      invoiceIds
+    ),
+    db.all<InvoiceAttachment>(
+      `SELECT ${attachmentMetadataOnly ? '"id", "parentInvoiceId", "fileName", "fileType", "fileSize", "createdAt", "updatedAt"' : '*'} FROM attachments WHERE "parentInvoiceId" IN (${placeholders}) ORDER BY "id"`,
+      invoiceIds
+    ),
     db.all<InvoiceBusinessSnapshots>(
       `SELECT * FROM invoice_business_snapshots WHERE "parentInvoiceId" IN (${placeholders})`,
       invoiceIds
@@ -702,10 +725,12 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
 
   const invoiceItemIds = invoiceItems.map(i => i.id) as number[];
   const placeholdersItems = invoiceItemIds.map(() => '?').join(', ');
-  const invoiceItemSnapshots = await db.all<InvoiceItemSnapshots>(
-    `SELECT sps.* FROM invoice_item_snapshots as sps WHERE "parentInvoiceItemId" IN (${placeholdersItems})`,
-    invoiceItemIds
-  );
+  const invoiceItemSnapshots = invoiceItemIds.length
+    ? await db.all<InvoiceItemSnapshots>(
+        `SELECT sps.* FROM invoice_item_snapshots as sps WHERE "parentInvoiceItemId" IN (${placeholdersItems})`,
+        invoiceItemIds
+      )
+    : [];
 
   const group = <T extends { parentInvoiceId: number }>(rows: T[]) => {
     const index = new Map<number, T[]>();
@@ -740,10 +765,13 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
         return {
           ...p,
           invoiceItemSnapshot: snapshotsByItem.get(p.id),
-          customField: p.customField && typeof p.customField === 'string' ? JSON.parse(p.customField) : p.customField
+          customField: p.customField ? JSON.parse(serializeCustomField(p.customField)!) : p.customField
         };
       }),
-      invoiceAttachments: attachmentsByInvoice.get(invoiceId) ?? [],
+      attachmentsLoaded: !attachmentMetadataOnly,
+      invoiceAttachments: (attachmentsByInvoice.get(invoiceId) ?? []).map(attachment =>
+        attachmentMetadataOnly ? { ...attachment, data: new Uint8Array() } : attachment
+      ),
       invoiceBankSnapshot: banksByInvoice.get(invoiceId)?.[0],
       invoiceBusinessSnapshot: businessesByInvoice.get(invoiceId)?.[0],
       invoiceClientSnapshot: clientsByInvoice.get(invoiceId)?.[0],
@@ -839,8 +867,13 @@ export const getCustomHeaders = async (db: DatabaseAdapter, type: 'invoice' | 'q
   return { success: true, data: headersMeta };
 };
 
-export const getAllInvoices = async (db: DatabaseAdapter, type?: 'invoice' | 'quotation', filter?: FilterData[]) => {
-  const finalInvoices = await getInvoices(db, { type, filter });
+export const getAllInvoices = async (
+  db: DatabaseAdapter,
+  type?: 'invoice' | 'quotation',
+  filter?: FilterData[],
+  options: { id?: number; attachmentMetadataOnly?: boolean } = {}
+) => {
+  const finalInvoices = await getInvoices(db, { type, filter, ...options });
   return { success: true, data: finalInvoices };
 };
 
@@ -1144,13 +1177,13 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       }
     }
 
-    await db.run('DELETE FROM invoice_items WHERE "parentInvoiceId" = ?;', [data.id]);
+    const itemsToInsert = await syncInvoiceItems(db, data.id, data.invoiceItems ?? []);
 
     const itemsResult = await processItems(
       db,
       { handleInvoiceItems, handleInvoiceItemSnapshots },
       data.id,
-      data.invoiceItems
+      itemsToInsert
     );
     if (!itemsResult.success) {
       return { success: false, key: itemsResult.key, message: itemsResult.message };

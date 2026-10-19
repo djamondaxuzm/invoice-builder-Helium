@@ -12,7 +12,7 @@ import { initSchema, initInitialData } from '../src/backend/shared/db/setup';
 import { runMigrations } from '../src/backend/shared/db/migrationRunner';
 import { addInvoice, updateInvoice, getAllInvoices } from '../src/backend/shared/services/invoices';
 import { invoice as fixture } from '../src/renderer/__tests__/billingPeriodFixtures';
-import { formEqual } from '../src/renderer/shared/utils/formEqual';
+
 import { invoiceSavePayload } from '../src/renderer/shared/utils/invoiceSavePayload';
 import type { Invoice } from '../src/backend/shared/types/invoice';
 import type { InvoiceUpdate } from '../src/renderer/shared/types/invoice';
@@ -44,7 +44,7 @@ const measure = async (fn: () => unknown | Promise<unknown>) => {
 const results: Record<string, unknown> = {
   node: process.version,
   platform: process.platform,
-  baseline: '1d5adaeb6b35c6bb2b77a9a6bf5c0f5872021219',
+  baseline: 'c723439122a74cee2b6b5aacb9550b578031a019',
   samples: 7
 };
 try {
@@ -80,6 +80,7 @@ try {
   const bytes = new Uint8Array(2 * 1024 * 1024).fill(73);
   const first = await addInvoice(db, {
     ...payload(1),
+    invoiceItems: Array.from({ length: 200 }, () => ({ ...payload(1).invoiceItems[0] })),
     invoiceAttachments: [1, 2, 3].map(
       id =>
         ({
@@ -95,7 +96,10 @@ try {
   const before: number[] = [],
     after: number[] = [];
   const saveOld = async () => {
-    const result = await baseline.updateInvoice(db, { ...saved, customerNotes: 'Benchmark notes' });
+    const result = await baseline.updateInvoice(
+      db,
+      invoiceSavePayload(saved as unknown as InvoiceUpdate) as unknown as Invoice
+    );
     if (!result.success) throw new Error(JSON.stringify(result));
     saved = result.data as Invoice;
   };
@@ -122,14 +126,8 @@ try {
     beforeSamples: before,
     afterSamples: after,
     scope:
-      'Full backend update, transaction and response hydration; 3 unchanged 2 MiB receipts; excludes IPC and renderer'
+      'Full backend update, transaction and response hydration; 200 unchanged lines and 3 unchanged 2 MiB receipts; excludes IPC and renderer'
   };
-  const wire = invoiceSavePayload(saved as unknown as InvoiceUpdate);
-  results.receiptPayload = {
-    beforeBytes: saved.invoiceAttachments.reduce((n, a) => n + a.data.byteLength, 0),
-    afterBytes: wire.invoiceAttachments!.reduce((n, a) => n + a.data.byteLength, 0)
-  };
-
   for (let id = 2; id <= 200; id++) {
     const row = payload(id);
     row.invoiceItems = Array.from({ length: 10 }, () => ({ ...row.invoiceItems[0] }));
@@ -143,7 +141,7 @@ try {
     if (result.data?.length !== 200) throw new Error('Baseline count');
   };
   const listNew = async () => {
-    const result = await getAllInvoices(db);
+    const result = await getAllInvoices(db, undefined, undefined, { attachmentMetadataOnly: true });
     if (result.data?.length !== 200) throw new Error('Updated count');
   };
   await listOld();
@@ -159,46 +157,14 @@ try {
   }
   results.load = {
     invoices: 200,
-    items: 1991,
+    items: 2190,
     beforeMs: median(listBefore),
     afterMs: median(listAfter),
     beforeSamples: listBefore,
     afterSamples: listAfter,
-    scope: 'Complete backend invoice-list load and hydration, same SQLite database; excludes UI/PDF rendering'
+    scope: 'Full receipt list versus metadata-only list, same SQLite database; excludes UI/PDF rendering'
   };
 
-  const stableStringify = (value: unknown): string => {
-    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-    if (value && typeof value === 'object')
-      return `{${Object.keys(value)
-        .sort()
-        .map(key => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`)
-        .join(',')}}`;
-    return JSON.stringify(value);
-  };
-  const original = { note: 'notes', image: new Uint8Array(1024 * 1024).fill(73) };
-  const current = { ...original };
-  const dirtyBefore: number[] = [],
-    dirtyAfter: number[] = [];
-  for (let i = 0; i < 7; i++) {
-    dirtyBefore.push(
-      await measure(() => {
-        if (stableStringify(original) !== stableStringify(current)) throw new Error('Baseline comparison');
-      })
-    );
-    const start = performance.now();
-    for (let j = 0; j < 10000; j++) if (!formEqual(original, current)) throw new Error('Comparison');
-    dirtyAfter.push((performance.now() - start) / 10000);
-  }
-  results.dirtyCheck = {
-    receiptBytes: original.image.byteLength,
-    beforeMs: median(dirtyBefore),
-    afterMs: median(dirtyAfter),
-    beforeSamples: dirtyBefore,
-    afterSamples: dirtyAfter,
-    scope:
-      'Unchanged 1 MiB image with immutable form copy; original comparator vs new; new timing averaged across 10,000 operations per sample'
-  };
   await writeFile(resolve(output, 'performance-results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
 } finally {
