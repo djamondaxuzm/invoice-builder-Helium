@@ -64,6 +64,16 @@ export interface ReportTrend {
   billed: number;
   payments: number;
 }
+export interface ReportInvoice {
+  id: number;
+  invoiceNumber: string;
+  date: string;
+  client: string;
+  business: string;
+  status: InvoiceStatus;
+  archived: boolean;
+  amount: number;
+}
 export interface ReportData {
   currency: ReportCurrency;
   invoiceCount: number;
@@ -80,6 +90,7 @@ export interface ReportData {
   collectionRate: number;
   clients: ReportClient[];
   paymentRows: ReportPayment[];
+  invoiceRows: ReportInvoice[];
   methods: ReportBucket[];
   aging: ReportBucket[];
   statuses: ReportBucket[];
@@ -99,19 +110,19 @@ export const getReportRange = (preset: ReportRangeType, now = new Date()): Repor
     case ReportRangeType.last_30_days:
       return localDateRange(subDays(now, 29), now);
     case ReportRangeType.this_month:
-      return localDateRange(startOfMonth(now), endOfMonth(now));
+      return localDateRange(startOfMonth(now), now);
     case ReportRangeType.last_month: {
       const date = subMonths(now, 1);
       return localDateRange(startOfMonth(date), endOfMonth(date));
     }
     case ReportRangeType.this_quarter:
-      return localDateRange(startOfQuarter(now), endOfQuarter(now));
+      return localDateRange(startOfQuarter(now), now);
     case ReportRangeType.last_quarter: {
       const date = subQuarters(now, 1);
       return localDateRange(startOfQuarter(date), endOfQuarter(date));
     }
     case ReportRangeType.this_year:
-      return localDateRange(startOfYear(now), endOfYear(now));
+      return localDateRange(startOfYear(now), now);
     case ReportRangeType.last_year: {
       const date = subYears(now, 1);
       return localDateRange(startOfYear(date), endOfYear(date));
@@ -174,6 +185,18 @@ export const getReportOptions = (invoices: Invoice[]) => {
 const money = roundMinorUnits;
 const addMoney = (left: number, right: number) => money(left + right);
 
+export const getReportTrend = (data: ReportTrend[], cumulative: boolean, subunit: number): ReportTrend[] => {
+  if (!cumulative) return data;
+  let billed = 0;
+  let payments = 0;
+  return data.map(point => {
+    // Sum integer minor units so the final cumulative point exactly matches the cards.
+    billed = addMoney(billed, money(point.billed * subunit));
+    payments = addMoney(payments, money(point.payments * subunit));
+    return { ...point, billed: billed / subunit, payments: payments / subunit };
+  });
+};
+
 export const buildReport = (
   invoices: Invoice[],
   range: ReportRange,
@@ -224,6 +247,7 @@ export const buildReport = (
     collectionRate: 0,
     clients: [],
     paymentRows: [],
+    invoiceRows: [],
     methods: [],
     aging,
     statuses,
@@ -233,6 +257,7 @@ export const buildReport = (
     warnings: []
   };
   const inRange = (date: string) => !!date && date >= from && date <= to;
+  const seenInvoices = new Set<number>();
   for (const invoice of invoices) {
     if (
       invoice.invoiceType !== InvoiceType.invoice ||
@@ -246,6 +271,11 @@ export const buildReport = (
       continue;
     }
     if (invCurrency.value !== currency.value) continue;
+    if (seenInvoices.has(invoice.id)) {
+      warnings.add(`Invoice ${invoice.invoiceFullNumber || invoice.id}: repeated invoice row counted only once.`);
+      continue;
+    }
+    seenInvoices.add(invoice.id);
     const name = invoice.invoiceClientSnapshot?.clientName || `Client #${invoice.clientId}`;
     const client = clients.get(invoice.clientId) ?? {
       id: invoice.clientId,
@@ -263,9 +293,9 @@ export const buildReport = (
       total = money(
         getInvoiceTotal({
           ...invoice,
-          discountAmount: Number(invoice.discountAmountCents),
-          surchargeAmount: Number(invoice.surchargeAmountCents),
-          shippingFee: Number(invoice.shippingFeeCents)
+          discountAmount: Number(invoice.discountAmountCents ?? 0),
+          surchargeAmount: Number(invoice.surchargeAmountCents ?? 0),
+          shippingFee: Number(invoice.shippingFeeCents ?? 0)
         })
       );
     } catch {
@@ -292,7 +322,13 @@ export const buildReport = (
         warnings.add(`Invoice ${invoice.invoiceFullNumber || invoice.id}: undated payment included in balance only.`);
         return;
       }
-      if (date <= today) recorded = addMoney(recorded, amount);
+      if (date > today) {
+        warnings.add(
+          `Invoice ${invoice.invoiceFullNumber || invoice.id}: future-dated payment excluded from cash received and current balances until ${date}.`
+        );
+        return;
+      }
+      recorded = addMoney(recorded, amount);
       if (!inRange(date)) return;
       result.payments = addMoney(result.payments, amount);
       client.payments = addMoney(client.payments, amount);
@@ -348,6 +384,16 @@ export const buildReport = (
         result.invoiceCount += 1;
         client.invoiceCount += 1;
         result.billed = addMoney(result.billed, total);
+        result.invoiceRows.push({
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceFullNumber || invoice.invoiceNumber,
+          date: issued,
+          client: name,
+          business: invoice.invoiceBusinessSnapshot?.businessName || `Business #${invoice.businessId}`,
+          status: invoice.status,
+          archived: Boolean(invoice.isArchived),
+          amount: total
+        });
         client.billed = addMoney(client.billed, total);
         result.settled = addMoney(result.settled, Math.max(0, Math.min(total, effectivePaid)));
         result.markedPaid = addMoney(result.markedPaid, Math.max(0, effectivePaid - recorded));
@@ -372,7 +418,7 @@ export const buildReport = (
             quantity: Number(item.quantity),
             invoiceItems: invoice.invoiceItems,
             discountType: invoice.discountType,
-            discountAmount: Number(invoice.discountAmountCents),
+            discountAmount: Number(invoice.discountAmountCents ?? 0),
             discountPercent: invoice.discountPercent
           });
           items.set(key, entry);
@@ -410,6 +456,9 @@ export const buildReport = (
   result.paymentRows = result.paymentRows
     .map(p => ({ ...p, amount: p.amount / subunit }))
     .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime() || a.key.localeCompare(b.key));
+  result.invoiceRows = result.invoiceRows
+    .map(row => ({ ...row, amount: row.amount / subunit }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
   result.methods = [...methods.values()]
     .map(m => ({ ...m, amount: m.amount / subunit }))
     .sort((a, b) => b.amount - a.amount);

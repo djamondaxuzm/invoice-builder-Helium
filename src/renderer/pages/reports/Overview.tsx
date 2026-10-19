@@ -50,27 +50,41 @@ export const Overview = ({
     t(`reports.${key}`)
   );
   const itemColumns = ['item', 'quantity', 'itemSales'].map(key => t(`reports.${key}`));
+  const invoiceColumns = ['invoice', 'issueDate', 'client', 'business', 'status', 'archived', 'amount'].map(key =>
+    t(`reports.${key}`)
+  );
+  const invoiceCells = (row: ReportData['invoiceRows'][number], csv = false) => [
+    row.invoiceNumber,
+    csv ? row.date : formatDate(row.date, dateFormat),
+    row.client,
+    row.business,
+    row.status,
+    row.archived ? t('common.archived') : t('reports.active'),
+    csv ? row.amount : money(row.amount)
+  ];
   const download = () => {
     const rows: (string | number)[][] =
-      tab === 'clients'
-        ? [
-            clientColumns,
-            ...clients.map(c => [
-              `${c.name} (#${c.id})`,
-              c.invoiceCount,
-              c.billed,
-              c.payments,
-              c.outstanding,
-              c.overdue,
-              c.credit
-            ])
-          ]
-        : tab === 'payments'
+      tab === 'invoices'
+        ? [invoiceColumns, ...data.invoiceRows.map(row => invoiceCells(row, true))]
+        : tab === 'clients'
           ? [
-              paymentColumns,
-              ...data.paymentRows.map(p => [reportDay(p.date), p.invoiceNumber, p.client, p.method, p.amount])
+              clientColumns,
+              ...clients.map(c => [
+                `${c.name} (#${c.id})`,
+                c.invoiceCount,
+                c.billed,
+                c.payments,
+                c.outstanding,
+                c.overdue,
+                c.credit
+              ])
             ]
-          : [itemColumns, ...data.items.map(i => [i.name, i.quantity, i.amount])];
+          : tab === 'payments'
+            ? [
+                paymentColumns,
+                ...data.paymentRows.map(p => [reportDay(p.date), p.invoiceNumber, p.client, p.method, p.amount])
+              ]
+            : [itemColumns, ...data.items.map(i => [i.name, i.quantity, i.amount])];
     rows.unshift([
       'Currency',
       data.currency.code,
@@ -110,7 +124,13 @@ export const Overview = ({
           {t('reports.manualPaidNote', { amount: money(data.markedPaid) })}
         </Alert>
       )}
-      <TrendChart data={data.trend} money={money} dateFormat={dateFormat} monthly={data.monthly} />
+      <TrendChart
+        data={data.trend}
+        money={money}
+        dateFormat={dateFormat}
+        monthly={data.monthly}
+        subunit={data.currency.subunit}
+      />
       <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 } }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
           <Tabs
@@ -120,12 +140,25 @@ export const Overview = ({
             scrollButtons="auto"
             aria-label={t('reports.views')}
           >
-            {['overview', 'clients', 'payments', 'items'].map(value => (
+            {['overview', 'invoices', 'clients', 'payments', 'items'].map(value => (
               <Tab key={value} value={value} label={t(`reports.${value}`)} />
             ))}
           </Tabs>
           {tab !== 'overview' && <Button onClick={download}>{t('reports.exportCsv')}</Button>}
         </Box>
+        {tab === 'invoices' && (
+          <>
+            <Typography sx={{ my: 2 }}>
+              {t('reports.invoiceReconciliation', { count: data.invoiceRows.length, amount: money(data.billed) })}
+            </Typography>
+            <ReportTable
+              key={`${data.currency.value}:${range.from}:${range.to}`}
+              label={t('reports.invoiceLedger')}
+              columns={invoiceColumns}
+              rows={data.invoiceRows.map(row => ({ key: String(row.id), cells: invoiceCells(row).map(String) }))}
+            />
+          </>
+        )}
         {tab === 'overview' && (
           <>
             <Typography sx={{ mt: 2 }}>

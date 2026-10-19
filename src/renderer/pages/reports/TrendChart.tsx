@@ -4,28 +4,25 @@ import { useTranslation } from 'react-i18next';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { DateFormat } from '../../shared/enums/dateFormat';
 import { formatDate } from '../../shared/utils/formatFunctions';
-import type { ReportTrend } from '../../shared/utils/reportFunctions';
+import { getReportTrend, type ReportTrend } from '../../shared/utils/reportFunctions';
 
 export const TrendChart = ({
   data,
   money,
   dateFormat,
-  monthly
+  monthly,
+  subunit
 }: {
   data: ReportTrend[];
   money: (value: number) => string;
   dateFormat: DateFormat;
   monthly: boolean;
+  subunit: number;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const [cumulative, setCumulative] = useState(false);
-  const points = useMemo(() => {
-    if (!cumulative) return data;
-    let billed = 0,
-      payments = 0;
-    return data.map(point => ({ ...point, billed: (billed += point.billed), payments: (payments += point.payments) }));
-  }, [data, cumulative]);
+  const points = useMemo(() => getReportTrend(data, cumulative, subunit), [data, cumulative, subunit]);
   return (
     <Box sx={{ my: 3 }} data-testid="report-trend">
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>

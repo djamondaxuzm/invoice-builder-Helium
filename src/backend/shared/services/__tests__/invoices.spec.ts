@@ -172,6 +172,22 @@ describe('atomic bulk payments on the existing database schema', () => {
     paymentMethod: 'Bank',
     allocations: allocatePayment(invoices, amount)
   });
+  it('loads each invoice once when legacy contact snapshots repeat, and retains invoices missing snapshots', async () => {
+    const first = await add('001');
+    const second = await add('002');
+    for (const table of ['invoice_business_snapshots', 'invoice_client_snapshots']) {
+      const columns = table.includes('business') ? '"businessName", "businessShortName"' : '"clientName"';
+      await db.run(
+        `INSERT INTO ${table} ("parentInvoiceId", ${columns}) SELECT "parentInvoiceId", ${columns} FROM ${table} WHERE "parentInvoiceId" = ?`,
+        [first.id]
+      );
+      await db.run(`DELETE FROM ${table} WHERE "parentInvoiceId" = ?`, [second.id]);
+    }
+    const rows = (await getAllInvoices(db, 'invoice')).data;
+    expect(rows.map(row => row.id).sort()).toEqual([first.id, second.id].sort());
+    expect(rows).toHaveLength(2);
+    expect(rows.every(row => row.shippingFeeCents === '10000')).toBe(true);
+  });
   it('saves partial allocations, preserves old receipts and archived/EU metadata, and requires no schema changes', async () => {
     const before = await db.all("SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name");
     const first = await add('001', {

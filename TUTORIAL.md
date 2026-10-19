@@ -1187,11 +1187,12 @@ Invoices can be exported **only to XLSX** format.
 
 ## Financial dashboard
 
-Choose **Last 30 days**, a calendar period, or an inclusive custom range. Last 30 days includes all of today and the preceding 29 local dates. Select a currency, then optionally a client or business. Currencies with matching codes and subunits are combined even if their database IDs differ. Clients with the same name remain separate. Archived and closed invoices count; quotes do not.
+Choose **Last 30 days**, a calendar period, or an inclusive custom range. Last 30 days includes all of today and the preceding 29 local dates. **This month**, **This quarter** and **This year** end today; previous periods include their complete calendar dates. Select a currency, then optionally a client or business. Currencies with matching codes and subunits are combined even if their database IDs differ. Clients with the same name remain separate. Archived and closed invoices count; quotes do not.
 
-- **Invoiced in period** uses invoice issue dates. **Payments dated in period** uses each payment entry's actual date, including receipts for older invoices.
+- **Invoiced in period** uses invoice issue dates and includes discounts, taxes, shipping and surcharges. Payments do not reduce this billed amount. **Payments dated in period** uses each payment entry's actual date, including receipts for older invoices. Future-dated payments are excluded from received cash until their date, including in custom ranges, and produce a warning.
 - **Outstanding today** and **Overdue today** include all invoices issued through today. They are current balances, not historical balances for the chosen range. Payments dated in the future are excluded from today's balances.
 - The trend chart shows daily totals for ranges up to 93 dates and monthly totals for longer ranges. Enable **Cumulative** for running totals.
+- **Invoices** lists exactly the invoices included in the billed total, with dates, clients, businesses, saved statuses and archive status. Their amounts add up to the card and the final cumulative chart point. Export this table to CSV to reconcile a surprising total. Duplicate rows for the same database invoice ID count once; distinct invoices that share a number still count separately.
 - **Balances** shows overdue aging, settlement status and separate overpayment credits. A credit on one invoice never hides another invoice's debt.
 - **Clients** provides a ranked comparison and a table; clicking a client name in the table drills into that client. **Payments** shows methods and the dated ledger. **Items** shows quantities and discounted line amounts including item-level taxes; invoice-level taxes, shipping and surcharges are excluded.
 - **Export CSV** exports the active table with the current filters. **Refresh** reloads saved invoices. A failed load offers retry instead of showing false zero totals.

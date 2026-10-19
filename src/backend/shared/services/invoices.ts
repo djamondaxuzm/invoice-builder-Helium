@@ -761,12 +761,14 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
   if (type) conditions.push(`i."invoiceType" = '${type}'`);
   if (whereClause) conditions.push(whereClause);
   const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  // Legacy snapshot tables allow duplicate parents; joins must not multiply invoices.
+  // Missing contact metadata must not hide an invoice from financial reporting.
   const invoicesSql = `
-        SELECT i.*, c."format" as "currencyFormat"
+        SELECT DISTINCT i.*, c."format" as "currencyFormat"
         FROM invoices i
-        INNER JOIN currencies as c on c."id" = i."currencyId"
-        INNER JOIN invoice_business_snapshots as ibs on ibs."parentInvoiceId" = i."id"
-        INNER JOIN invoice_client_snapshots as ics on ics."parentInvoiceId" = i."id"
+        LEFT JOIN currencies as c on c."id" = i."currencyId"
+        LEFT JOIN invoice_business_snapshots as ibs on ibs."parentInvoiceId" = i."id"
+        LEFT JOIN invoice_client_snapshots as ics on ics."parentInvoiceId" = i."id"
         ${whereSql}
         ORDER BY i."createdAt" DESC
       `;

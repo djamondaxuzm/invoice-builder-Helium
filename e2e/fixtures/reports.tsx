@@ -40,6 +40,26 @@ let rows =
           invoiceCurrencySnapshot: { currencyCode: 'EUR', currencySymbol: '€', currencySubunit: 100 }
         })
       ];
+if (mode === 'audit') {
+  const first = invoice(1, {
+    issuedAt: '2026-01-01',
+    invoicePayments: [{ amountCents: '2500', paidAt: '2026-10-18', paymentMethod: PaymentType.bank }]
+  });
+  rows = [
+    first,
+    first,
+    invoice(2, {
+      issuedAt: '2026-10-18',
+      shippingFeeCents: '10000',
+      isArchived: true,
+      invoicePayments: [
+        { amountCents: '7500', paidAt: '2026-10-18', paymentMethod: PaymentType.cash },
+        { amountCents: '5000', paidAt: '2026-10-21', paymentMethod: PaymentType.cash }
+      ]
+    }),
+    invoice(3, { issuedAt: '2026-10-19', shippingFeeCents: '20000' })
+  ];
+}
 window.electronAPI = {
   getAllInvoices: async () => {
     calls += 1;
