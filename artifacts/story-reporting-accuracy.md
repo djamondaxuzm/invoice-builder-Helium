@@ -1,6 +1,6 @@
 # Accurate client and payment reporting
 
-State: qa-review
+State: done
 
 ## Scope and compatibility
 
@@ -25,7 +25,8 @@ Database schemas, all historical migrations, legacy EU metadata, app ID and user
 - Real SQLite tests check unchanged schema, retained receipt bytes and legacy metadata, partial historical corrections, stale data, duplicate requests and forced second-write failure rolling back the complete batch.
 - Seven Playwright scenarios pass: dashboard ranges/filters/CSV/narrow layout, failed-load retry, client-first partial bulk payment, canceled legacy/new payment forms, confirmed historical date, and stale-batch recovery. Screenshots reviewed locally.
 - Full formatter and ESLint fix commands pass; final touched files lint clean. App and internal-server TypeScript checks pass. Production renderer, preload, migration and Electron builds pass.
-- Windows unpacked packaging validation pending. Native macOS execution and a live PostgreSQL server are not tested in this Windows session.
+- Windows directory packaging passes using the cached Electron binary and existing native dependencies. The archive contains the payment IPC, renderer, preload, SQLite native binary, PostgreSQL library and all 32 migration modules. It contains no server-only files/packages. The unpacked app is 621,720,950 bytes; this is not an installer download measurement. An NSIS installer was not built or published.
+- GitHub Windows CI passes from a clean dependency install (tests, migrations, ESLint and formatting). Native macOS execution and a live PostgreSQL server are not tested in this Windows session.
 
 ## Measurements
 
@@ -37,4 +38,4 @@ Synthetic, warmed local calculations, not end-to-end invoice loading times:
 
 ## Delivery
 
-History, README and tutorial updated. Main-branch publication and merge pending final package review. No database from the user's installed application was opened or modified for testing.
+History, README and tutorial updated. Published as PR #8 with local QA and GitHub Windows CI evidence. No database from the user's installed application was opened or modified for testing.
