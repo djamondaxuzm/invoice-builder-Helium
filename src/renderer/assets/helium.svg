@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x2="1" y2="1"><stop stop-color="#172e50"/><stop offset="1" stop-color="#101a32"/></linearGradient>
+    <linearGradient id="orbit" x2="1" y2="1"><stop stop-color="#7de7e1"/><stop offset="1" stop-color="#8ca8ff"/></linearGradient>
+  </defs>
+  <rect x="24" y="24" width="976" height="976" rx="220" fill="url(#tile)"/>
+  <g fill="none" stroke="url(#orbit)" stroke-width="34">
+    <ellipse cx="512" cy="512" rx="350" ry="165" transform="rotate(-38 512 512)"/>
+    <ellipse cx="512" cy="512" rx="350" ry="165" transform="rotate(38 512 512)"/>
+  </g>
+  <circle cx="247" cy="277" r="53" fill="#8cf4e8" stroke="#152840" stroke-width="14"/>
+  <circle cx="777" cy="747" r="53" fill="#b4c5ff" stroke="#14213a" stroke-width="14"/>
+  <circle cx="512" cy="512" r="158" fill="#182b48"/>
+  <g fill="none" stroke="#f3fbff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M414 445V579 M498 445V579 M414 510H498"/>
+    <path d="M553 529H631 C631 471 551 471 551 532 C551 586 602 592 629 563"/>
+  </g>
+</svg>

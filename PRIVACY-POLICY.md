@@ -107,4 +107,4 @@ Continued use of the Application constitutes acceptance of any updates.
 ## 9. Contact
 
 For questions about this Privacy Policy, contact:  
-**[piratuks](https://github.com/piratuks)**
+**[djamondaxuzm](https://github.com/djamondaxuzm)**

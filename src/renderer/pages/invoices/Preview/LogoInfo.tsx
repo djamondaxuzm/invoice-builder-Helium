@@ -13,7 +13,12 @@ const LogoInfoComponent: FC<Props> = ({ invoiceForm, logoUrl }) => {
 
   return (
     <Image
-      style={[{ ...LOGO_SIZES[invoiceForm?.invoiceCustomization?.logoSize ?? DEFAULT_LOGO_SIZES] }]}
+      style={{
+        ...LOGO_SIZES[invoiceForm?.invoiceCustomization?.logoSize ?? DEFAULT_LOGO_SIZES],
+        objectFit: 'contain',
+        objectPosition: 'center',
+        flexShrink: 0
+      }}
       src={logoUrl}
     />
   );

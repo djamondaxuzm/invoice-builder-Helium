@@ -105,4 +105,4 @@ These Terms shall be governed by and interpreted according to the laws of **Lith
 ## 12. Contact
 
 If you have questions about these Terms, please contact:  
-**[piratuks](https://github.com/piratuks)**
+**[djamondaxuzm](https://github.com/djamondaxuzm)**

@@ -6,6 +6,9 @@ import { initDBDialogsHandlers } from './ipc/dbDialogs';
 
 config();
 
+// Keep the existing Chromium settings/database selection when the display name changes.
+if (app.isPackaged) app.setPath('userData', join(app.getPath('appData'), 'invoice-builder'));
+
 const isDev = !app.isPackaged;
 const devServer = APP_CONFIG.FE_SERVER_URL;
 const dbName = APP_CONFIG.DB_NAME;

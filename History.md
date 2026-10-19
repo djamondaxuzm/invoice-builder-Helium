@@ -1,3 +1,13 @@
+## 2.8.1 - Helium personal release (2026-10-18)
+
+- Preserve logo aspect ratios in individual invoice and quotation PDFs at all logo sizes.
+- Fit every upload cropper preview to the window without enlarging small images; start with the full image selected, preserve crop coordinates on resize, and provide a full-image reset.
+- Disable saving until an image loads, prevent duplicate crop saves, and report image decoding/export failures.
+- Add a Helium atom icon to the app, browser, Windows installer, Linux and macOS assets.
+- Personalize titles, maintainer metadata, support/repository/update links for djamondaxuzm; remove upstream donation and promotion links while retaining license notices.
+- Keep the existing app ID, executable name and packaged user-data directory for upgrade compatibility. Docker configurations build this fork locally.
+- Includes the preceding invoice performance, linked catalog updates, archive safety and billing-period improvements.
+
 # Invoice Builder
 
 ## {DATE}, version {VERSION}
@@ -419,4 +429,3 @@ Initial release with the following functionality
 - Automatic snapshotting of business, client, item, and currency data for historical accuracy
 
 Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
-

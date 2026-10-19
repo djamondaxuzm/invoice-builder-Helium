@@ -1239,7 +1239,6 @@ To generate valid UBL/Peppol XML or XRechnung (UBL 2.1) XML, additional fields a
 > Use a UBL Peppol XML validator (e.g., [https://peppolvalidator.com/](https://peppolvalidator.com/)) to ensure compliance before sending.
 > Use a XRechnung (UBL 2.1) XML validator (e.g., [https://validator.invoice-portal.de/](https://validator.invoice-portal.de/)) to ensure compliance before sending.
 
-
 ### Combined billing-period branding and logos
 
 Billing-period PDFs use a consistent invoice layout with a company header, shaded item table, invoice subtotal and notes. Each invoice preserves its saved company logo, contact details, accent color, font family, logo size and A4/Letter paper choice. The final summary uses the first invoice's branding and highlights the combined balance. Select invoices with matching branding if you want a uniform period. Long item lists and descriptions continue onto additional pages, and every page includes its position in the complete document.
@@ -1250,3 +1249,6 @@ Individual and billing-period PDF exports also optimize old saved logos in memor
 
 Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
 
+## Upload and crop images in Helium
+
+Uploads open with the entire image selected and fitted to the window. Drag a crop handle to trim it, or choose **Use full image** to reset. Resizing the window preserves the selected area. Saving uses original source pixels, not the smaller preview. The same cropper is used for logos, receipts, signatures, QR codes and watermarks. Business logos keep their proportions in invoice PDFs.

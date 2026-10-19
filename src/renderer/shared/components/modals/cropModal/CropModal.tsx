@@ -1,10 +1,24 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { AppBar, Box, Button, Dialog, DialogContent, IconButton, Toolbar, Tooltip, useTheme } from '@mui/material';
+import {
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Stack,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useTheme
+} from '@mui/material';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ReactCrop, { type Crop } from 'react-image-crop';
+import ReactCrop, { type PercentCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toDataUrl } from '../../../utils/dataUrlFunctions';
+import { FULL_IMAGE_CROP, getNaturalCrop } from '../../../utils/imageCrop';
 
 interface Props {
   isOpen: boolean;
@@ -14,104 +28,123 @@ interface Props {
 }
 export const CropModal: React.FC<Props> = ({ onClose = () => {}, imageSrc, isOpen, onSave = () => {} }) => {
   const { t } = useTranslation();
-  const DEFAULT_CROP: Crop = { unit: '%', width: 50, x: 0, y: 0, height: 50 };
-  const [crop, setCrop] = useState<Crop>(DEFAULT_CROP);
+  const [crop, setCrop] = useState<PercentCrop>({ ...FULL_IMAGE_CROP });
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const [ready, setReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const theme = useTheme();
 
-  const handleImageLoad = (img: HTMLImageElement) => {
-    imgRef.current = img;
-  };
-
   useEffect(() => {
-    if (isOpen) {
-      setCrop({ ...DEFAULT_CROP });
-      imgRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCrop({ ...FULL_IMAGE_CROP });
+    setError('');
+    setReady(Boolean(imgRef.current?.complete && imgRef.current.naturalWidth));
   }, [imageSrc, isOpen]);
 
-  const makeClientCrop = async () => {
-    if (!imgRef.current || !crop.width || !crop.height) return;
-
-    const image = imgRef.current;
-    const canvas = document.createElement('canvas');
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-
-    // Convert crop coordinates to rendered-pixel space (handles both 'px' and '%' units)
-    const pixelX = crop.unit === '%' ? (crop.x / 100) * image.width : crop.x;
-    const pixelY = crop.unit === '%' ? (crop.y / 100) * image.height : crop.y;
-    const pixelWidth = crop.unit === '%' ? (crop.width / 100) * image.width : crop.width;
-    const pixelHeight = crop.unit === '%' ? (crop.height / 100) * image.height : crop.height;
-
-    canvas.width = pixelWidth * scaleX;
-    canvas.height = pixelHeight * scaleY;
-
-    const ctx = canvas.getContext('2d', { alpha: true });
-
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.drawImage(
-      image,
-      pixelX * scaleX,
-      pixelY * scaleY,
-      pixelWidth * scaleX,
-      pixelHeight * scaleY,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    return new Promise<Blob | null>(resolve => {
-      canvas.toBlob(blob => {
-        if (blob) resolve(blob);
-        else resolve(null);
-      }, 'image/png');
-    });
-  };
-
   const handleCropSave = async () => {
-    const croppedBlob = await makeClientCrop();
-    if (croppedBlob) {
-      const croppedUrl = await toDataUrl(croppedBlob);
-
-      if (onSave) onSave(croppedUrl, croppedBlob);
+    if (!imgRef.current || !ready || saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      const image = imgRef.current;
+      const source = getNaturalCrop(image.naturalWidth, image.naturalHeight, crop);
+      const canvas = document.createElement('canvas');
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) throw new Error('Could not prepare the image. Please retry.');
+      ctx.drawImage(image, source.x, source.y, source.width, source.height, 0, 0, source.width, source.height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          result => (result ? resolve(result) : reject(new Error('Could not save the image. Please retry.'))),
+          'image/png'
+        );
+      });
+      onSave(await toDataUrl(blob), blob);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save the image. Please retry.');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} fullScreen>
-      <AppBar sx={{ position: 'relative', borderRadius: '0' }}>
+    <Dialog open={isOpen} onClose={saving ? undefined : onClose} fullScreen aria-label="Crop image">
+      <AppBar sx={{ position: 'relative', borderRadius: 0 }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Tooltip title={t('ariaLabel.back')}>
-            <IconButton
-              onClick={onClose}
-              aria-label={t('ariaLabel.back')}
-              sx={{
-                color: theme.palette.secondary.main
-              }}
-            >
-              <ArrowBackIcon fontSize="medium" />
-            </IconButton>
+            <span>
+              <IconButton
+                disabled={saving}
+                onClick={onClose}
+                aria-label={t('ariaLabel.back')}
+                sx={{ color: theme.palette.secondary.main }}
+              >
+                <ArrowBackIcon fontSize="medium" />
+              </IconButton>
+            </span>
           </Tooltip>
-
-          <Button autoFocus color="inherit" onClick={handleCropSave}>
-            {t('common.save')}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button color="inherit" disabled={!ready || saving} onClick={() => setCrop({ ...FULL_IMAGE_CROP })}>
+              Use full image
+            </Button>
+            <Button
+              autoFocus
+              color="inherit"
+              disabled={!ready || saving || !crop.width || !crop.height}
+              onClick={handleCropSave}
+            >
+              {saving ? 'Saving…' : t('common.save')}
+            </Button>
+          </Stack>
         </Toolbar>
       </AppBar>
-
-      <DialogContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
-        <Box style={{ maxWidth: '100%', maxHeight: '100%', overflow: 'auto' }}>
-          <ReactCrop crop={crop} onChange={newCrop => setCrop(newCrop)} circularCrop={false} keepSelection>
+      <DialogContent
+        sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minHeight: 0, p: 2 }}
+      >
+        <Typography variant="body2">
+          Drag the edges to crop, or save the full image. The preview fits your screen; cropping keeps the original
+          resolution.
+        </Typography>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            overflow: 'auto'
+          }}
+        >
+          <ReactCrop
+            crop={crop}
+            onChange={(_pixels, percent) => setCrop(percent)}
+            disabled={saving || !ready}
+            circularCrop={false}
+            keepSelection
+            style={{ maxWidth: '100%' }}
+          >
             <img
               src={imageSrc}
-              alt={t('common.crop')}
-              ref={handleImageLoad as unknown as React.RefObject<HTMLImageElement>}
+              alt={t('ariaLabel.crop')}
+              ref={imgRef}
+              onLoad={() => {
+                setReady(true);
+                setError('');
+              }}
+              onError={() => {
+                setReady(false);
+                setError('This image could not be opened. Please choose a PNG or JPEG image.');
+              }}
+              style={{
+                display: 'block',
+                width: 'auto',
+                height: 'auto',
+                maxWidth: '100%',
+                maxHeight: 'max(100px, calc(100dvh - 220px))'
+              }}
             />
           </ReactCrop>
         </Box>
