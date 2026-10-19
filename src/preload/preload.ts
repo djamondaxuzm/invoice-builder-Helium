@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { BulkPaymentRequest } from '../backend/shared/utils/paymentAllocation';
 import type { DBInitType } from '../renderer/shared/enums/dbInitType';
-import type { EInvoice } from '../renderer/shared/enums/einvoice';
 import type { InvoiceType } from '../renderer/shared/enums/invoiceType';
 import type { Bank, BankAdd, BankUpdate } from '../renderer/shared/types/bank';
 import type { BusinessAdd, BusinessUpdate } from '../renderer/shared/types/business';
@@ -107,7 +107,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getNextSequence: (data: { businessId: number; clientId: number; invoiceType: InvoiceType }) =>
     ipcRenderer.invoke('get-next-sequence', data),
-  getEInvoiceXML: (data: { invoiceId: number; einvoice: EInvoice }) => ipcRenderer.invoke('get-einvoice-xml', data),
+
   getCustomHeaders: (type: InvoiceType) => ipcRenderer.invoke('get-custom-headers', type),
   getAllInvoices: (
     type?: InvoiceType,
@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     options?: { id?: number; attachmentMetadataOnly?: boolean }
   ) => ipcRenderer.invoke('get-all-invoices', type, filter, options),
   deleteInvoice: (id: number) => ipcRenderer.invoke('delete-invoice', id),
+  recordBulkPayment: (data: BulkPaymentRequest) => ipcRenderer.invoke('record-bulk-payment', data),
   updateInvoice: (data: InvoiceUpdate) => ipcRenderer.invoke('update-invoice', data),
   addInvoice: (data: InvoiceAdd) => ipcRenderer.invoke('add-invoice', data),
   duplicateInvoice: (id: number, invoiceType: InvoiceType) => ipcRenderer.invoke('duplicate-invoice', id, invoiceType),

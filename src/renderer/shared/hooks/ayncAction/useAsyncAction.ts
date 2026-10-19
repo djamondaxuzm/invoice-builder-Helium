@@ -40,7 +40,7 @@ export const useAsyncAction = <T>(
     [dispatch, t]
   );
 
-  const { data, loading, execute } = useAsync<T>(asyncFn, {
+  const { data, loading, error, execute } = useAsync<T>(asyncFn, {
     onLoadingChange: handleLoadingChange,
     onError: handleError,
     immediate
@@ -52,5 +52,5 @@ export const useAsyncAction = <T>(
     }
   }, [loading, data]);
 
-  return { data, loading, execute };
+  return { data, loading, error, execute };
 };

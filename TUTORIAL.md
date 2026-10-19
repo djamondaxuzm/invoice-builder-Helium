@@ -1,12 +1,12 @@
 # Invoice Builder Tutorial
 
-> 💡 **Note:** The interface is fully responsive and works well on resizable windows, making it suitable for users on Linux tiling window managers, small screens, or any desktop setup.
+> 💡 **Note:** The interface is fully responsive and works well on resizable windows, making it suitable for small screens and resizable Windows or macOS windows.
 
 ## Export a billing period
 
 1. Save the individual daily invoices as usual.
-2. Open **Invoices → Billing period PDF**.
-3. Choose a **Client** first, then optionally enter **From date** and **To date**. Both endpoints are included. Changing the client or dates clears the current selection.
+2. Open **Invoices → Billing period / payments**.
+3. Choose a **Client** first, followed by a **Business** and **Currency** (selected automatically when there is only one option), then optionally enter **From date** and **To date**. Both endpoints are included. Changing the client or dates clears the current selection.
 4. Invoices appear oldest first with their issue date, invoice number, business, currency, status, line-item count and receipt count. Click a row to select only that invoice; **Ctrl-click** (or **Cmd-click**) toggles individual rows, and **Shift-click** selects a range from the last clicked row. **Ctrl+Shift-click** adds a range. Checkboxes toggle without clearing other selections. **Select shown** selects every visible invoice. The selection must still use one business and currency.
 5. Choose **Download PDF**. Each invoice starts on its own page in date order, with item quantities, unit prices, taxes, subtotal and customer notes. Saved PNG/JPEG receipt images follow their invoice. The final summary lists all invoices, charges before tax, tax, total billed, payments and balance due. Paid invoices count as settled; overpayments remain a credit.
 
@@ -32,13 +32,6 @@ You can either create/open a local database file or connect to a database server
 Recently opened databases are displayed in a **quick access list** for faster reopening.
 
 ![First screen](tutorial/initial_screen.jpg)
-
-When the application runs in Docker or the web version, databases are created inside a predefined folder. All databases in that folder are automatically listed in Quick Access.
-To remove a database from the Quick Access list, simply delete it from that folder.
-During creation, you will be prompted to enter the database name.
-
-![First screen](tutorial/initial_screen_web.jpg)
-![First screen](tutorial/initial_screen_naming_web.jpg)
 
 ### Server database
 
@@ -67,7 +60,7 @@ The **Settings** screen allows you to configure application behavior, manage dat
 From this screen you can:
 
 - Enable or disable optional features (**Presets**, **Style profiles**, **Quotes** and **Reports**)
-- Enable or disable optional features (**UBL 2.1**, **XRechnung**, **Receipt Printing**)
+- Enable or disable optional features (**Receipt Printing**)
 - Export all application data to **JSON**
 - Import previously exported data
 - Access project resources:
@@ -95,7 +88,7 @@ You can customize:
 
 Receipt printing is available in the desktop Electron app for invoices and quotes. It prints a compact 80mm receipt layout designed for retail checkout and POS-style workflows.
 
-> ℹ️ This feature is desktop-only and uses the operating system print dialog. A compatible printer must be installed and selected before printing. It is not available in the web/docker version.
+> ℹ️ This feature is desktop-only and uses the operating system print dialog. A compatible printer must be installed and selected before printing.
 
 ![Receipt printing](tutorial/printing_receipt_1.png)
 
@@ -1190,54 +1183,44 @@ Invoices can be exported **only to XLSX** format.
 ![Invoices data example](tutorial/invoice_page_41.jpg)
 ![Invoices paid](tutorial/invoice_page_43.jpg)
 
-## Reports screen
+## Financial dashboard
 
-The **Reports** screen provides an overview of **aggregated financial data grouped by currency** for a selected period. It can be choosen to take into account either issued at date or paid at date for reporing.
+Choose **Last 30 days**, a calendar period, or an inclusive custom range. Last 30 days includes all of today and the preceding 29 local dates. Select a currency, then optionally a client or business. Currencies with matching codes and subunits are combined even if their database IDs differ. Clients with the same name remain separate. Archived and closed invoices count; quotes do not.
 
-![Reports currency 1](tutorial/reports_page_1.jpg)
-![Reports currency 2](tutorial/reports_page_2.jpg)
+- **Invoiced in period** uses invoice issue dates. **Payments dated in period** uses each payment entry's actual date, including receipts for older invoices.
+- **Outstanding today** and **Overdue today** include all invoices issued through today. They are current balances, not historical balances for the chosen range. Payments dated in the future are excluded from today's balances.
+- The trend chart shows daily totals for ranges up to 93 dates and monthly totals for longer ranges. Enable **Cumulative** for running totals.
+- **Balances** shows overdue aging, settlement status and separate overpayment credits. A credit on one invoice never hides another invoice's debt.
+- **Clients** provides a ranked comparison and a table; clicking a client name in the table drills into that client. **Payments** shows methods and the dated ledger. **Items** shows quantities and discounted line amounts including item-level taxes; invoice-level taxes, shipping and surcharges are excluded.
+- **Export CSV** exports the active table with the current filters. **Refresh** reloads saved invoices. A failed load offers retry instead of showing false zero totals.
 
-### Filters
+An informational message identifies amounts settled using Paid status without matching payment entries. These amounts reduce outstanding balances but never appear as dated cash receipts. Invalid dates or amounts produce warnings where they affect a report.
 
-You can filter reports using:
+{IMAGE: financial dashboard with filters, trend, client and payment tabs}
 
-- **Predefined periods** (e.g. this month, last year)
-- **Custom date ranges**
+## Record a payment
 
-![Reports predefined filters](tutorial/reports_page_3.jpg)
-![Reports custom filters](tutorial/reports_page_4.jpg)
+On an invoice with a remaining balance, **Mark as paid** opens a payment form. Confirm the amount, actual date and method. Save the form, then **Save the invoice** to persist it. Canceling the form changes nothing. A partial payment leaves the invoice partially paid. Editing an existing payment also updates its date, method and notes.
 
-## e-invoices
+### Older invoices marked Paid
 
-The application supports:
+Older Paid invoices remain settled even if payment dates were never entered. Nothing is silently backfilled. Choose **Add missing payment details** on such an invoice: the amount starts at the portion without payment records, the date is blank, and a method must be chosen. Enter only details you know. You can record part of that amount and complete the rest later; the invoice remains Paid. Existing entries remain intact. Save the invoice afterward. Only the entries you add enter the payment timeline.
 
-- UBL Peppol XML: you can download the XML embedded with the PDF, or as a standalone XML file. This feature is enabled by default and can be toggled in the Settings page.
-- XRechnung (UBL 2.1) XML: you can download the standalone XML file. This feature is enabled by default and can be toggled in the Settings page.
+### One payment across several invoices
 
-![E-Invoice](tutorial/e-invoice-actions.jpg)
+1. Open **Invoices → Billing period / payments** and choose a client, business and currency.
+2. Select the invoices by date using Ctrl/Cmd-click, Shift-click or checkboxes, then choose **Record payment**.
+3. Enter the total received, actual date, method and optional note. The amount starts at the outstanding balance of the selection. A smaller amount is allocated oldest invoice first. Already settled invoices are skipped. Overpayments are not accepted by this bulk action.
+4. Review each invoice's allocation and resulting balance, then choose **Record payments**. This saves immediately as one transaction; do not save invoices individually afterward.
+5. If an invoice changed since the preview, the entire batch is rejected. Close, refresh and review a new preview. A failed batch never saves just some of its payments.
 
-To generate valid UBL/Peppol XML or XRechnung (UBL 2.1) XML, additional fields are available on Businesses and Clients. These fields must be properly filled to produce compliant invoices.
+The batch supports up to 500 selected invoices. It changes payments and statuses without rewriting receipts, invoice lines or catalog definitions. You can export the same selection as a billing-period PDF after recording the payment.
 
-![E-Invoice](tutorial/e-invoice-actions1.jpg)
-![E-Invoice](tutorial/e-invoice-actions2.jpg)
+{IMAGE: client-first selection and bulk payment allocation preview}
 
-> **ℹ️ UBL XML / XRechnung XML may fail validation if data is misconfigured.**
-> The application only checks that required fields are present. It does not guarantee that all values conform to UBL/Peppol or XRechnung (UBL 2.1) standards.
->
-> For example:
->
-> - Tax names must match supported values (e.g., VAT). Arbitrary text will cause validation errors.
-> - Currency codes must be standard ISO codes (e.g., EUR, USD). Random text will fail validation.
->
-> Export behavior:
->
-> - A regular PDF can be exported at any time.
-> - The XML file and the PDF with embedded XML reflect only saved data.
-> - You cannot export XML while creating a new invoice until it has been saved.
-> - When editing an invoice, make sure to save changes before exporting.
->
-> Use a UBL Peppol XML validator (e.g., [https://peppolvalidator.com/](https://peppolvalidator.com/)) to ensure compliance before sending.
-> Use a XRechnung (UBL 2.1) XML validator (e.g., [https://validator.invoice-portal.de/](https://validator.invoice-portal.de/)) to ensure compliance before sending.
+## Database and platform compatibility
+
+Windows and macOS remain supported. Linux/Docker distribution and UBL/Peppol/XRechnung XML exports are removed. Previously stored fields and migrations are preserved, including legacy XML metadata. Existing database files and PostgreSQL connections continue to use the same schema. Backup/import, presets, numbering, linked catalog updates, PDF and receipt export, and update checks remain available.
 
 ### Combined billing-period branding and logos
 

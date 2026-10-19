@@ -9,8 +9,6 @@ import type { Business, BusinessFromData } from '../../shared/types/business';
 import { toDataUrl, toUint8Array } from '../../shared/utils/dataUrlFunctions';
 import { optimizeLogo } from '../../shared/utils/logoImage';
 import { validators } from '../../shared/utils/validatorFunctions';
-import { useAppSelector } from '../../state/configureStore';
-import { selectSettings } from '../../state/pageSlice';
 
 interface Props {
   business?: Business;
@@ -19,7 +17,6 @@ interface Props {
 export const Form: FC<Props> = ({ handleChange = () => {}, business }) => {
   const { t } = useTranslation();
   const initialFormRef = useRef<BusinessFromData | undefined>(undefined);
-  const settings = useAppSelector(selectSettings);
   const { form, setForm, update } = useForm<BusinessFromData>({
     id: business?.id,
     logo: business?.logo ?? undefined,
@@ -283,42 +280,7 @@ export const Form: FC<Props> = ({ handleChange = () => {}, business }) => {
           onChange={e => update('vatCode', e.target.value)}
         />
       </Grid>
-      {(settings?.ublON || settings?.xrechnungON) && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            label={t('common.peppolEndpointId')}
-            fullWidth
-            value={form.peppolEndpointId}
-            error={errors.peppolEndpointId}
-            helperText={
-              errors.peppolEndpointId ? t('common.invalidPeppolEndpointId') : t('common.peppolEndpointIdHelper')
-            }
-            onChange={e => {
-              update('peppolEndpointId', e.target.value);
-              validateField('peppolEndpointId', e.target.value);
-            }}
-          />
-        </Grid>
-      )}
-      {(settings?.ublON || settings?.xrechnungON) && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            label={t('common.peppolEndpointSchemeId')}
-            fullWidth
-            value={form.peppolEndpointSchemeId}
-            error={errors.peppolEndpointSchemeId}
-            helperText={
-              errors.peppolEndpointSchemeId
-                ? t('common.invalidPeppolEndpointSchemeId')
-                : t('common.peppolEndpointSchemeIdHelper')
-            }
-            onChange={e => {
-              update('peppolEndpointSchemeId', e.target.value);
-              validateField('peppolEndpointSchemeId', e.target.value);
-            }}
-          />
-        </Grid>
-      )}
+
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           label={t('common.countryCode')}

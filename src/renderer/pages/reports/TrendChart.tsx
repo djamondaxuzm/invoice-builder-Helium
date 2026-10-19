@@ -1,41 +1,80 @@
-import { Box, Typography, useTheme } from '@mui/material';
-import { memo } from 'react';
+import { Box, FormControlLabel, Switch, Typography, useTheme } from '@mui/material';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { DateFormat } from '../../shared/enums/dateFormat';
 import { formatDate } from '../../shared/utils/formatFunctions';
-import { useAppSelector } from '../../state/configureStore';
-import { selectSettings } from '../../state/pageSlice';
-import { CustomTooltip } from './CustomTooltip';
+import type { ReportTrend } from '../../shared/utils/reportFunctions';
 
-interface Props {
-  data: { date: string; total: number }[];
-}
-const TrendChartComponent: React.FC<Props> = ({ data }) => {
-  const theme = useTheme();
+export const TrendChart = ({
+  data,
+  money,
+  dateFormat,
+  monthly
+}: {
+  data: ReportTrend[];
+  money: (value: number) => string;
+  dateFormat: DateFormat;
+  monthly: boolean;
+}) => {
   const { t } = useTranslation();
-  const storeSettings = useAppSelector(selectSettings);
-
+  const theme = useTheme();
+  const [cumulative, setCumulative] = useState(false);
+  const points = useMemo(() => {
+    if (!cumulative) return data;
+    let billed = 0,
+      payments = 0;
+    return data.map(point => ({ ...point, billed: (billed += point.billed), payments: (payments += point.payments) }));
+  }, [data, cumulative]);
   return (
-    <Box sx={{ mt: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" color={theme.palette.text.primary}>
-          {t('reports.salesTrending')}
-        </Typography>
+    <Box sx={{ my: 3 }} data-testid="report-trend">
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6">{t('reports.invoiceAndPaymentTrend')}</Typography>
+        <FormControlLabel
+          control={<Switch checked={cumulative} onChange={e => setCumulative(e.target.checked)} />}
+          label={t('reports.cumulative')}
+        />
       </Box>
-
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {t(monthly ? 'reports.monthlyTrendNote' : 'reports.dailyTrendNote')}
+      </Typography>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
+        <LineChart data={points} margin={{ left: 10, right: 20 }} accessibilityLayer>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="date"
-            tickFormatter={value => (storeSettings ? formatDate(value, storeSettings.dateFormat) : value)}
+            minTickGap={35}
+            tickFormatter={value => (monthly ? String(value).slice(0, 7) : formatDate(value, dateFormat))}
           />
-          <YAxis tickFormatter={value => `${(value / 1000).toFixed(0)}K`} />
-          <Tooltip content={props => <CustomTooltip {...props} />} />
-          <Line type="monotone" dataKey="total" stroke={theme.palette.primary.main} strokeWidth={3} dot={false} />
+          <YAxis
+            width={75}
+            tickFormatter={value => new Intl.NumberFormat(undefined, { notation: 'compact' }).format(value)}
+          />
+          <Tooltip
+            formatter={value => money(Number(value))}
+            labelFormatter={value => (monthly ? String(value).slice(0, 7) : formatDate(String(value), dateFormat))}
+          />
+          <Legend />
+          <Line
+            type="linear"
+            name={t('reports.invoiced')}
+            dataKey="billed"
+            stroke={theme.palette.primary.main}
+            strokeWidth={2}
+            dot={{ r: 2 }}
+            isAnimationActive={false}
+          />
+          <Line
+            type="linear"
+            name={t('reports.recordedPayments')}
+            dataKey="payments"
+            stroke={theme.palette.success.main}
+            strokeWidth={2}
+            dot={{ r: 2 }}
+            isAnimationActive={false}
+          />
         </LineChart>
       </ResponsiveContainer>
     </Box>
   );
 };
-export const TrendChart = memo(TrendChartComponent);

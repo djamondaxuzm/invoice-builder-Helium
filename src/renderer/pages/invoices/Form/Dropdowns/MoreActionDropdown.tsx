@@ -1,5 +1,4 @@
 import AddCircleIcon from '@mui/icons-material/AddCircle';
-import CodeIcon from '@mui/icons-material/Code';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
@@ -11,7 +10,6 @@ import {
   ListItemIcon,
   ListItemText,
   SwipeableDrawer,
-  Tooltip,
   Typography,
   useMediaQuery,
   useTheme
@@ -29,9 +27,6 @@ interface Props {
   onClose?: () => void;
   onOpen?: () => void;
   onExportPDF?: () => void;
-  onExportPDFUBL?: () => void;
-  onExportUBLXML?: () => void;
-  onExportXRechnungXML?: () => void;
   onDelete?: () => void;
   onDuplicate?: () => void;
   onMakeInvoice?: () => void;
@@ -47,15 +42,11 @@ const MoreActionDropdownComponent: FC<Props> = ({
   showDelete = true,
   showDuplicate = true,
   showMakeInvoice = true,
-  isPDFReady = false,
   type,
   onClose,
   onOpen,
   onExportPDF,
   onPrintReceipt,
-  onExportPDFUBL,
-  onExportUBLXML,
-  onExportXRechnungXML,
   onDelete,
   onDuplicate,
   onMakeInvoice
@@ -193,122 +184,7 @@ const MoreActionDropdownComponent: FC<Props> = ({
                 </ListItem>
               </ListItemButton>
             )}
-            {storeSettings?.ublON && type === InvoiceType.invoice && (
-              <>
-                <Tooltip title={t('common.tooltipPDFXML')}>
-                  <Box>
-                    <ListItemButton
-                      onClick={onExportPDFUBL}
-                      disabled={!isPDFReady}
-                      sx={{
-                        width: '100%',
-                        borderRadius: 1,
-                        display: 'flex',
-                        justifyContent: 'start',
-                        alignItems: 'start',
-                        flexDirection: 'column'
-                      }}
-                    >
-                      <ListItem sx={{ p: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
-                          <PictureAsPdfIcon color="error" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              component="div"
-                              variant="body1"
-                              sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {t('common.exportPDFEmbeddedUBL')}
-                            </Typography>
-                          }
-                          disableTypography
-                          sx={{ m: 0 }}
-                          slotProps={{ primary: { sx: { fontWeight: 600, m: 0 } } }}
-                        />
-                      </ListItem>
-                    </ListItemButton>
-                  </Box>
-                </Tooltip>
-                <Tooltip title={t('common.tooltipXML')}>
-                  <Box>
-                    <ListItemButton
-                      onClick={onExportUBLXML}
-                      disabled={!isPDFReady}
-                      sx={{
-                        width: '100%',
-                        borderRadius: 1,
-                        display: 'flex',
-                        justifyContent: 'start',
-                        alignItems: 'start',
-                        flexDirection: 'column'
-                      }}
-                    >
-                      <ListItem sx={{ p: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
-                          <CodeIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              component="div"
-                              variant="body1"
-                              sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {t('common.exportUBLXML')}
-                            </Typography>
-                          }
-                          disableTypography
-                          sx={{ m: 0 }}
-                          slotProps={{ primary: { sx: { fontWeight: 600, m: 0 } } }}
-                        />
-                      </ListItem>
-                    </ListItemButton>
-                  </Box>
-                </Tooltip>
-              </>
-            )}
-            {storeSettings?.xrechnungON && type === InvoiceType.invoice && (
-              <>
-                <Tooltip title={t('common.tooltipXML')}>
-                  <Box>
-                    <ListItemButton
-                      onClick={onExportXRechnungXML}
-                      disabled={!isPDFReady}
-                      sx={{
-                        width: '100%',
-                        borderRadius: 1,
-                        display: 'flex',
-                        justifyContent: 'start',
-                        alignItems: 'start',
-                        flexDirection: 'column'
-                      }}
-                    >
-                      <ListItem sx={{ p: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
-                          <CodeIcon color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography
-                              component="div"
-                              variant="body1"
-                              sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {t('common.exportXRechnungXML')}
-                            </Typography>
-                          }
-                          disableTypography
-                          sx={{ m: 0 }}
-                          slotProps={{ primary: { sx: { fontWeight: 600, m: 0 } } }}
-                        />
-                      </ListItem>
-                    </ListItemButton>
-                  </Box>
-                </Tooltip>
-              </>
-            )}
+
             {showDuplicate && (
               <ListItemButton
                 onClick={onDuplicate}

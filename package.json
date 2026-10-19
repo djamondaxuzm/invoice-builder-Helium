@@ -22,11 +22,7 @@
     "quotation-builder",
     "billing-software",
     "business-software",
-    "document-generation",
-    "e-invoices",
-    "peppol",
-    "ubl",
-    "xrechnung"
+    "document-generation"
   ],
   "bugs": {
     "url": "https://github.com/djamondaxuzm/invoice-builder-Helium/issues"
@@ -37,16 +33,6 @@
   },
   "license": "MIT",
   "scripts": {
-    "docker:build": "docker build -t invoice-builder .",
-    "docker:backup-data": "node scripts/backup-data.cjs",
-    "docker:remove-database": "node scripts/remove-db.cjs",
-    "docker:list-databases": "docker exec backend ls /data",
-    "docker:list-databases:single": "docker exec invoice-builder ls /data",
-    "docker:compose:up:single": "docker compose -f docker-compose.standalone.yml up -d",
-    "docker:compose:pull": "docker compose pull",
-    "docker:compose:build": "docker compose up -d --build",
-    "docker:compose:up": "docker compose up -d",
-    "docker:compose:down": "docker compose down -d",
     "dev": "npm run dev:clean:backend && concurrently \"npm:dev:react\" \"npm:dev:preload\" \"npm:dev:migrations\" \"npm:dev:electron\" \"npm:dev:electron:start:wait\"",
     "dev:clean:backend": "rimraf dist-be/backend",
     "dev:webserver": "set TS_NODE_PROJECT=tsconfig.webserver.json && npx tsx --watch src/backend/webserver/main.ts",
@@ -54,7 +40,7 @@
     "dev:preload": "vite build --config vite.preload.config.ts --watch",
     "dev:react": "vite",
     "dev:electron:start:wait": "wait-on dist-be/backend/main/main.cjs && npm run dev:electron:start",
-    "dev:electron:start": "electronmon dist-be/backend/main/main.cjs --ozone-platform=x11 --exit",
+    "dev:electron:start": "electronmon dist-be/backend/main/main.cjs --exit",
     "dev:electron": "vite build --config vite.electron.config.ts --watch",
     "dev:migrations": "vite build --config vite.migrations.config.ts --watch",
     "build": "npm run build:react && npm run build:preload && npm run build:migrations && npm run build:electron",
@@ -73,7 +59,6 @@
     "sort:i18n": "node scripts/sort-i18n.js",
     "package": "npm run build && electron-builder --win --x64",
     "release:win": "npm run build && electron-builder --win --x64 --publish always",
-    "release:linux": "npm run build && electron-builder --linux --publish always",
     "release:mac": "npm run build && electron-builder --mac --publish always",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -89,19 +74,15 @@
     "@mui/x-date-pickers": "^9.7.0",
     "@react-pdf/renderer": "^4.5.1",
     "@reduxjs/toolkit": "^2.12.0",
-    "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.21",
     "dotenv": "^17.3.1",
     "electron-updater": "^6.8.3",
     "exceljs": "^4.4.0",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.6.0",
     "file-saver": "^2.0.5",
     "i18next": "^26.0.8",
     "i18next-browser-languagedetector": "^8.2.1",
     "mui-color-input": "^9.0.0",
-    "multer": "^2.3.0",
     "pako": "^3.0.1",
     "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",
@@ -168,7 +149,11 @@
     "vite-plugin-static-copy": "^4.1.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.0",
-    "wait-on": "^9.0.5"
+    "wait-on": "^9.0.5",
+    "express": "^5.2.1",
+    "cors": "^2.8.6",
+    "express-rate-limit": "^8.6.0",
+    "multer": "^2.3.0"
   },
   "msw": {
     "workerDirectory": "public"

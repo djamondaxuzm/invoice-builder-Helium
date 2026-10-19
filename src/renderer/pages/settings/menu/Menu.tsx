@@ -8,7 +8,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InfoIcon from '@mui/icons-material/Info';
 import PolicyIcon from '@mui/icons-material/Policy';
 import ReceiptIcon from '@mui/icons-material/Receipt';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ShareIcon from '@mui/icons-material/Share';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -31,8 +30,6 @@ interface Props {
   toggleReports?: (value: boolean) => void;
   toggleStyleProfiles?: (value: boolean) => void;
   togglePresets?: (value: boolean) => void;
-  toggleUBL?: (value: boolean) => void;
-  toggleXRechnung?: (value: boolean) => void;
   toggleReceiptPrinting?: (value: boolean) => void;
   onExportJSON?: () => void;
   onImportJSON?: () => void;
@@ -45,11 +42,9 @@ export const Menu: FC<Props> = ({
   toggleStyleProfiles = () => {},
   togglePresets = () => {},
   toggleReceiptPrinting = () => {},
-  toggleUBL = () => {},
   onModeChange = () => {},
   onExportJSON = () => {},
-  onImportJSON = () => {},
-  toggleXRechnung = () => {}
+  onImportJSON = () => {}
 }) => {
   const { mode, toggleMode } = useContext(ThemeContext);
   const { t } = useTranslation();
@@ -138,28 +133,6 @@ export const Menu: FC<Props> = ({
           checked: storeSettings?.presetsON ?? true,
           onChange: () => {
             togglePresets(!storeSettings?.presetsON);
-          }
-        },
-        {
-          text: t('settingsMenuItems.titles.turnUBL'),
-          description: t('settingsMenuItems.descriptions.turnUBL'),
-          icon: <ReceiptLongIcon />,
-          isToggle: true,
-          isSelected: false,
-          checked: storeSettings?.ublON ?? true,
-          onChange: () => {
-            toggleUBL(!storeSettings?.ublON);
-          }
-        },
-        {
-          text: t('settingsMenuItems.titles.turnXRechnung'),
-          description: t('settingsMenuItems.descriptions.turnXRechnung'),
-          icon: <ReceiptLongIcon />,
-          isToggle: true,
-          isSelected: false,
-          checked: storeSettings?.xrechnungON ?? true,
-          onChange: () => {
-            toggleXRechnung(!storeSettings?.xrechnungON);
           }
         },
         {

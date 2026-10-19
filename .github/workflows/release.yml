@@ -1,4 +1,4 @@
-name: Manual Release (Win + Linux + MacOS)
+name: Manual Release (Windows + macOS)
 
 on:
   workflow_dispatch:   
@@ -28,26 +28,6 @@ jobs:
       - name: Build Windows release
         run: npm run release:win
 
-  linux:
-    environment: release
-    env:
-      GH_TOKEN: ${{ secrets.GH_TOKEN }}
-    name: Build Linux Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Linux release
-        run: npm run release:linux
 
   mac:
     environment: release

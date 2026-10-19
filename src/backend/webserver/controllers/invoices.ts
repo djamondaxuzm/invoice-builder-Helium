@@ -1,5 +1,4 @@
 import { type Express, type Request, type Response } from 'express';
-import type { EInvoice } from '../../shared/enums/einvoice';
 import { InvoiceType } from '../../shared/enums/invoiceType';
 import * as invoicesService from '../../shared/services/invoices';
 import { decodeInvoice, encodeResultInvoices } from '../../shared/utils/dataUrlFunctions';
@@ -7,18 +6,9 @@ import { dbInstance } from '../database';
 import { parseFilter, requireDB } from '../utils/functions';
 
 export const initInvoicesController = (app: Express) => {
-  app.get('/api/invoices/xml', requireDB, async (req: Request, res: Response) => {
-    const data = req.query as unknown as { invoiceId: number; einvoice: EInvoice };
-    const result = await invoicesService.getInvoiceXML(dbInstance!, data);
-    if (!result.success) {
-      res.status(500).json(result);
-      return;
-    }
-
-    const xmlBuffer = Buffer.from(result.data.xml, 'utf-8');
-    res.setHeader('Content-Type', result.data.profile.fileExtension);
-    res.setHeader('Content-Disposition', `attachment; filename="einvoice-${data.invoiceId}.xml"`);
-    res.send(xmlBuffer);
+  app.post('/api/invoices/payments/bulk', requireDB, async (req: Request, res: Response) => {
+    const result = await invoicesService.recordBulkPayment(dbInstance!, req.body);
+    res.status(result.success ? 200 : 409).json(result);
   });
   app.get('/api/invoices/sequence', requireDB, async (req: Request, res: Response) => {
     const query = req.query as unknown as { businessId: number; clientId: number; invoiceType?: InvoiceType };

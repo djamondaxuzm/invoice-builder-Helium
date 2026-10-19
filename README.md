@@ -6,9 +6,7 @@
 [![Downloads](https://img.shields.io/github/downloads/djamondaxuzm/invoice-builder-Helium/total)](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
 [![Latest Release](https://img.shields.io/github/v/release/djamondaxuzm/invoice-builder-Helium)](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
 ![Windows](https://img.shields.io/badge/Windows-10%2B-blue?logo=windows)
-![Linux](https://img.shields.io/badge/Linux-DEB%20%7C%20AppImage-blue?logo=linux)
 ![macOS](https://img.shields.io/badge/macOS-DMG-lightgrey?logo=apple&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-blue?style=flat-square&logo=docker&logoColor=white)
 
 **djamondaxuzm's personal Invoice Builder Helium fork.**
 
@@ -36,10 +34,9 @@ Invoice Builder is designed for freelancers, contractors, and small businesses w
 - **Full ownership of their data** - no cloud lock‑in
 - **Offline access** - works anywhere, anytime
 - **A predictable, transparent tool** - no subscriptions, no hidden sync
-- **Cross-platform support** - macOS, Windows & Linux
+- **Cross-platform support** - Windows and macOS
 - **Import/export freedom** - JSON, XLSX, full database backups
 - **Highly customizable PDFs** - branding, layout, colors, typography
-- **UBL & Peppol BIS 3.0 support** – generate invoices that are compliant with European e-invoicing standards for automatic submission to buyers and public administrations
 
 If you value **privacy, portability, and control**, this app is built for you.
 
@@ -54,8 +51,6 @@ If you value **privacy, portability, and control**, this app is built for you.
 - Multi-currency support: choose the currency for each invoice/quote individually
 - Responsive layout - usable on small and large screens, resizable windows supported
 - Invoice/Quote translations – select a language per document, independent of app settings
-- Export invoices in UBL 2.1 / Peppol BIS Billing 3.0 XML format, fully compliant for automated e-invoicing
-- Export invoices in XRechnung (UBL 2.1) XML format, fully compliant for automated e-invoicing
 - Native receipt printing for invoices and quotes in desktop Electron mode, including compact 80mm thermal receipt layouts for retail checkout workflows
 - Log out from the sidebar to return to the database selection screen and switch databases without restarting the app
 
@@ -102,17 +97,20 @@ If you value **privacy, portability, and control**, this app is built for you.
 - Ability to include QR codes for payment into PDF
 - Ability to customize invoice / quote labels to custom text
 
-### Reports
+### Financial dashboard
 
-- Aggregated data
-- Charts and summaries
+- Inclusive local date ranges, currency/client/business filters and daily or monthly invoice/payment trends
+- Client comparisons, payment methods and ledger, settlement status, overdue aging and item sales
+- CSV exports for the selected view; archived invoices included and currencies kept separate
+- Actual payment dates drive cash charts; legacy Paid status settles balances without inventing transactions
+- Client-first bulk payments with an allocation preview, partial payments and one atomic save
 
 ### Import, Export & Backup
 
 - Full database backup & restore
 - Export all data to JSON and import back
 - Export to XLSX for most entities
-- Invoices and quotes support export (historical documents remain immutable)
+- Invoices and quotes support export; previously exported files remain unchanged
 
 ### Settings & Customization
 
@@ -122,14 +120,13 @@ If you value **privacy, portability, and control**, this app is built for you.
 - Leading-zero invoice/quote numbering is preserved across auto-increment (for consistent alphabetical file sorting)
 - File name customization for exported PDFs
 - Light & dark mode
-- Enable/disable UBL 2.1 Peppol BIS Billing 3.0, receipt printing, reports, style profiles, presets and quotes
+- Enable/disable receipt printing, reports, style profiles, presets and quotes
 - Check for updates via GitHub releases
 - Presets: Predefine default Invoice/Quote data (e.g., business, client, currency, bank, style profile, notes, language, signature) to streamline document creation
 
 ## 🖥️ Supported Platforms
 
 - **Windows:** 10 or newer, 64-bit
-- **Linux:** any modern distribution (Ubuntu, Debian, Linux Mint, etc.) supporting .deb packages or AppImage
 - **macOS:** 11.0 (Big Sur) or newer, Apple Silicon (M1/M2/M3/M4), 64-bit, .dmg installer available
 - **Memory:** 2 GB RAM minimum (1 GB may work for very small datasets)
 - **Disk space:** ~200 MB for the installer; ~550mb for the app; additional space needed for database files
@@ -138,10 +135,10 @@ If you value **privacy, portability, and control**, this app is built for you.
 
 Invoice Builder now supports **two database backends**:
 
-| Storage Type            | Description                                                           | Best For                                           |
-| ----------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
-| **SQLite (local file)** | Simple, portable, zero‑configuration database stored as a single file | Solo users, offline use, desktop mode              |
-| **PostgreSQL (server)** | Network‑accessible database server with concurrency and robustness    | Multi‑user setups, Docker deployments, NAS/servers |
+| Storage Type            | Description                                                           | Best For                                |
+| ----------------------- | --------------------------------------------------------------------- | --------------------------------------- |
+| **SQLite (local file)** | Simple, portable, zero‑configuration database stored as a single file | Solo users, offline use, desktop mode   |
+| **PostgreSQL (server)** | Network‑accessible database server with concurrency and robustness    | Existing server-based desktop databases |
 
 Users can now choose between:
 
@@ -150,95 +147,11 @@ Users can now choose between:
 
 This makes Invoice Builder flexible for both lightweight personal use and more advanced multi‑device or multi‑user environments.
 
-## 🧑‍💻 Self-Hosting (Docker)
-
-Invoice Builder can also be self-hosted using Docker for users who prefer running it on their own server or NAS.
-
-This option is ideal if you want:
-
-- Centralized access from multiple machines
-- Easy backups via mounted volumes
-
-### Docker Image
-
-Build this personal fork locally with `docker compose up --build -d` (or `docker compose -f docker-compose.standalone.yml up --build -d`). These configurations build the checked-out Helium source instead of pulling the upstream app.
-
-> **ℹ️ `VITE_API_URL` is no longer needed for Docker deployments.**
-> The Docker image now uses **nginx** as the frontend server. Nginx proxies all `/api/*` requests
-> to the backend internally, so the frontend never needs to know the backend's external address.
-> `VITE_API_URL` is only needed when running the web server outside Docker (e.g. `npm run dev:react`, `npm run dev:webserver`).
->
-> If you build the image yourself for non-Docker use, you can still pass it:
->
-> ```bash
-> docker build --build-arg VITE_API_URL=http://your-host:3000 -t invoice-builder .
-> ```
->
-> But for all standard Docker deployments you can omit it entirely.
-
----
-
-### Option A – Two containers (recommended)
-
-The default setup runs backend and frontend as separate containers from the same image.
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-| Container  | Port | Role                         |
-| ---------- | ---- | ---------------------------- |
-| `backend`  | 3000 | Node.js REST API + SQLite/PG |
-| `frontend` | 3001 | Static SPA served by `serve` |
-
----
-
-### Option B – Single container
-
-Run both backend and frontend in one container using `SERVICE=all`:
-
-```bash
-docker compose -f docker-compose.standalone.yml up -d
-```
-
-| Port | Role                         |
-| ---- | ---------------------------- |
-| 3000 | Node.js REST API + SQLite/PG |
-| 3001 | Static SPA served by `serve` |
-
----
-
-### Building locally instead of pulling
-
-If you prefer to build the image from source:
-
-```bash
-# Two-container build
-docker compose up -d --build
-docker compose up -d
-
-# Or single container
-docker build -t invoice-builder .
-docker compose -f docker-compose.standalone.yml up -d
-```
-
 ## 📦 Installation
 
-Download the latest release from the **GitHub Releases** page:
+Installers will be listed on the [GitHub Releases page](https://github.com/djamondaxuzm/invoice-builder-Helium/releases) when published. Changes on main do not automatically create a downloadable installer.
 
-➡️ [Download Latest Release](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
-
-No account required.
-
-### Linux AppImage
-
-Make the AppImage executable and launch it:
-
-```bash
-chmod +x Invoice-Builder-*.AppImage
-./Invoice-Builder-*.AppImage
-```
+To build Windows locally, install Node.js, clone this repository, then run `npm ci` and `npm run package`. The installer is written to `release/`. Build macOS on a Mac with `npm ci`, `npm run build`, and `npx electron-builder --mac --publish never`.
 
 > ⚠️ **Browser download warning**
 >
@@ -249,16 +162,6 @@ chmod +x Invoice-Builder-*.AppImage
 >
 > This is normal for newly published apps and does **not** indicate a security issue.  
 > Simply choose **Keep anyway / Save anyway** to proceed with the download.
->
-> 🐧 **Linux package warning**
->
-> On some Linux distributions (Ubuntu, Linux Mint, etc.), you may see messages such as:
->
-> - “This package is provided by a third party”
-> - “Installing software from outside the official repositories may be unsafe”
->
-> This warning appears because the app is not distributed via the default system repositories.  
-> If you downloaded the package directly from the official GitHub Releases page, it is safe to proceed.
 >
 > 🍎 **macOS Gatekeeper warning**
 >
@@ -297,7 +200,7 @@ chmod +x Invoice-Builder-*.AppImage
 
 ### Billing-period PDFs
 
-In **Invoices**, choose **Billing period PDF**, optionally set a date range, and select two or more saved invoices for the same business, client and currency. Choose **Download PDF** to create a chronological statement with each invoice's line items, invoice total, and a combined period total, paid amount and balance due. For example, daily invoices 001–007 can appear together in one statement. The original invoices and their numbers remain unchanged; the statement does not create a new invoice or consume a sequence number.
+In **Invoices**, choose **Billing period / payments**, choose a client, then a business and currency. Select invoices in date order using Ctrl/Cmd-click, Shift-click or checkboxes. Choose **Download PDF** for two or more invoices, or **Record payment** for one or more outstanding invoices. A payment preview shows the allocation and resulting balances before saving. See [the billing-period guide](TUTORIAL.md#export-a-billing-period).
 
 The date range filters which invoices can be selected; changing it clears the selection. The exported period runs from the earliest to the latest selected issue date. Archived invoices can also be selected. This is a statement export, not a stored billing-period record or a replacement for the original invoice PDFs/attachments. Billing-period labels are currently in English.
 
@@ -319,8 +222,7 @@ When an invoice or quote is created, snapshots of the following are stored with 
 - **Style profile**
 - **Layout**
 
-Changes to these entities do **not** affect existing invoices or quotes.  
-Snapshots are updated only when editing an invoice or quote and changing the associated **client, business, item, or currency**.
+Business/client definition edits and catalog item name, unit and price edits propagate to linked invoices and quotes. Archiving a catalog item preserves existing invoice lines. Other snapshots remain document-specific unless explicitly replaced. See [the update rules](TUTORIAL.md#invoice-save-and-date-behavior) before editing a shared definition.
 
 ## 🔄 Backups & Data Portability
 
@@ -349,41 +251,15 @@ npm install
 npm run dev
 ```
 
-#### 🌐 Webserver / Browser
+### Verification
 
-```bash
-git clone https://github.com/djamondaxuzm/invoice-builder-Helium.git
-cd invoice-builder-Helium
-npm install
-npm run dev:react
-npm run dev:webserver
-```
+Run `npm test -- --run --maxWorkers=1`, `npm run lint`, `npx tsc --noEmit -p tsconfig.app.json`, and `npm run build`. The reporting browser suite uses `npx playwright test --config=playwright.reports.config.ts` with Vite running on port 5185.
 
-### ⚙️ Environment Variables
+### Compatibility and distribution
 
-- .env.development
+Windows and macOS are the supported desktop targets. Linux packages, Docker deployment scripts and EU XML export actions have been removed. Existing SQLite/PostgreSQL connections, schemas, migrations, legacy e-invoice metadata, backups/imports, presets, numbering and the updater are retained. This update does not migrate or delete database fields.
 
-```env
-VITE_ENABLE_MOCKS={true|false} # Enables or disables mock data (Currently no mocked data is ready)
-VITE_API_URL={url} Backend webserver URL when running without Electron (Web/Docker mode)
-
-```
-
-- .env.production
-
-```env
-VITE_API_URL={url} Backend webserver URL when running without Electron (Web/Docker mode)
-```
-
-- .env.test
-
-```env
-VITE_API_URL={url} Backend webserver URL when running without Electron (Web/Docker mode)
-```
-
-- other (Some configuration values are not controlled through .env files and instead live directly in the codebase)
-  - Webserver configs (which are used only running locally not via docker) -> backend/webserver/config.ts
-  - Electron configs -> backend/main/config.ts
+The internal HTTP adapter remains for development and compatibility checks; it is excluded from desktop packaging. Its server-only packages are development dependencies. `npm run build:webserver` verifies this adapter. It is not a supported self-hosted distribution.
 
 ### 📁 Project Structure
 
@@ -423,7 +299,6 @@ VITE_API_URL={url} Backend webserver URL when running without Electron (Web/Dock
 
 ### 🛠️ Core Stack
 
-- **Docker** - containerization for self‑hosting and reproducible deployments
 - **Electron** - cross-platform desktop framework
 - **SQLite** - lightweight, reliable embedded database
 - **TypeScript** - safer, maintainable code

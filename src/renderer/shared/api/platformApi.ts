@@ -1,7 +1,7 @@
 import { gzip } from 'pako';
+import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAllocation';
 import type { DatabaseType } from '../enums/databaseType';
 import type { DBInitType } from '../enums/dbInitType';
-import type { EInvoice } from '../enums/einvoice';
 import type { InvoiceType } from '../enums/invoiceType';
 import type { BankAdd, BankUpdate, BankUpdateWeb, BankWeb } from '../types/bank';
 import type { BusinessAdd, BusinessUpdate, BusinessWeb } from '../types/business';
@@ -155,21 +155,6 @@ const apiGet = async <T>(path: string, params?: Record<string, string>): Promise
   }
   const res = await fetch(url.toString());
   return res.json() as Promise<T>;
-};
-
-const apiGetBlob = async (path: string, params?: Record<string, string>): Promise<Response<Uint8Array | undefined>> => {
-  const url = new URL(path, baseUrl());
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  }
-
-  const res = await fetch(url.toString());
-  if (res.ok) {
-    const buffer = await res.arrayBuffer();
-    return { success: true, data: new Uint8Array(buffer) } as Response<Uint8Array | undefined>;
-  } else {
-    return { success: false };
-  }
 };
 
 const apiPost = async <T>(path: string, body?: unknown): Promise<T> => {
@@ -448,11 +433,6 @@ export const webApi = () => {
         clientId: data.clientId.toString(),
         invoiceType: data.invoiceType
       }),
-    getEInvoiceXML: async (data: { invoiceId: number; einvoice: EInvoice }) =>
-      apiGetBlob('/api/invoices/xml', {
-        invoiceId: data.invoiceId.toString(),
-        einvoice: data.einvoice
-      }),
     getCustomHeaders: async (type: InvoiceType) =>
       apiGet<Response<CustomFieldMeta[]>>('/api/invoices/headers', { type: type }),
     getAllInvoices: async (
@@ -476,6 +456,8 @@ export const webApi = () => {
         data: response.data?.map(mapInvoiceFromWeb)
       };
     },
+    recordBulkPayment: (data: BulkPaymentRequest) =>
+      apiPost<Response<{ invoiceIds: number[] }>>('/api/invoices/payments/bulk', data),
     updateInvoice: async (data: InvoiceUpdate) => {
       const response = await apiPut<Response<InvoiceWeb>>('/api/invoices', await mapInvoiceToWeb(data));
 

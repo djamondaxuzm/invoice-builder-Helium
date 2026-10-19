@@ -5,8 +5,6 @@ import { useForm } from '../../shared/hooks/form/useForm';
 import { useFormDirtyCheck } from '../../shared/hooks/form/useFormDirtyCheck';
 import type { Client, ClientFromData } from '../../shared/types/client';
 import { validators } from '../../shared/utils/validatorFunctions';
-import { useAppSelector } from '../../state/configureStore';
-import { selectSettings } from '../../state/pageSlice';
 
 interface Props {
   client?: Client;
@@ -15,7 +13,6 @@ interface Props {
 export const Form: FC<Props> = ({ handleChange = () => {}, client }) => {
   const { t } = useTranslation();
   const initialFormRef = useRef<ClientFromData | undefined>(undefined);
-  const settings = useAppSelector(selectSettings);
   const { form, setForm, update } = useForm<ClientFromData>({
     id: client?.id,
     email: client?.email ?? '',
@@ -205,62 +202,7 @@ export const Form: FC<Props> = ({ handleChange = () => {}, client }) => {
           onChange={e => update('vatCode', e.target.value)}
         />
       </Grid>
-      {(settings?.ublON || settings?.xrechnungON) && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            label={t('common.peppolEndpointId')}
-            fullWidth
-            value={form.peppolEndpointId}
-            error={errors.peppolEndpointId}
-            helperText={
-              errors.peppolEndpointId ? t('common.invalidPeppolEndpointId') : t('common.peppolEndpointIdHelper')
-            }
-            onChange={e => {
-              update('peppolEndpointId', e.target.value);
-              validateField('peppolEndpointId', e.target.value);
-            }}
-          />
-        </Grid>
-      )}
-      {(settings?.ublON || settings?.xrechnungON) && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            label={t('common.peppolEndpointSchemeId')}
-            fullWidth
-            value={form.peppolEndpointSchemeId}
-            error={errors.peppolEndpointSchemeId}
-            helperText={
-              errors.peppolEndpointSchemeId
-                ? t('common.invalidPeppolEndpointSchemeId')
-                : t('common.peppolEndpointSchemeIdHelper')
-            }
-            onChange={e => {
-              update('peppolEndpointSchemeId', e.target.value);
-              validateField('peppolEndpointSchemeId', e.target.value);
-            }}
-          />
-        </Grid>
-      )}
-      {(settings?.ublON || settings?.xrechnungON) && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            label={t('common.buyerReference')}
-            fullWidth
-            value={form.buyerReference}
-            helperText={
-              settings?.ublON && settings?.xrechnungON
-                ? `${t('common.buyerReferenceUBL')}\n${t('common.buyerReferenceXRechnung')}`
-                : settings?.ublON
-                  ? t('common.buyerReferenceUBL')
-                  : t('common.buyerReferenceXRechnung')
-            }
-            slotProps={{ formHelperText: { style: { whiteSpace: 'pre-line' } } }}
-            onChange={e => {
-              update('buyerReference', e.target.value);
-            }}
-          />
-        </Grid>
-      )}
+
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           label={t('common.countryCode')}

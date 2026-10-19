@@ -21,6 +21,8 @@ import type { Business } from '../../types/business';
 import type { Item } from '../../types/item';
 import type { Unit } from '../../types/unit';
 import { InvoiceItemTaxType } from '../../enums/taxType';
+import { recordBulkPayment } from '../invoices';
+import { allocatePayment, type BulkPaymentRequest } from '../../utils/paymentAllocation';
 
 const createTestDatabase = async (): Promise<DatabaseAdapter> => {
   const sqlite = new sqlite3.Database(':memory:');
@@ -139,6 +141,159 @@ const loadNextSequence = async (
   );
   return row?.nextSequence;
 };
+
+describe('atomic bulk payments on the existing database schema', () => {
+  let db: DatabaseAdapter;
+  let businessId: number, clientId: number, currencyId: number;
+  beforeEach(async () => {
+    db = await createTestDatabase();
+    businessId = await insertBusiness(db, 'Bulk business', 'BB');
+    clientId = await insertClient(db, 'Bulk client', 'BC');
+    currencyId = await getCurrencyId(db, 'USD');
+  });
+  afterEach(async () => {
+    await db.close();
+  });
+  const add = async (number: string, extra: Partial<Invoice> = {}) => {
+    const result = await addInvoice(db, {
+      ...createInvoicePayload(businessId, clientId, currencyId, number),
+      shippingFeeCents: '10000',
+      ...extra
+    });
+    expect(result.success).toBe(true);
+    return result.data as Invoice;
+  };
+  const request = (invoices: Invoice[], amount?: number): BulkPaymentRequest => ({
+    clientId,
+    businessId,
+    currencyCode: 'USD',
+    currencySubunit: 100,
+    paidAt: '2026-10-18T12:00:00Z',
+    paymentMethod: 'Bank',
+    allocations: allocatePayment(invoices, amount)
+  });
+  it('saves partial allocations, preserves old receipts and archived/EU metadata, and requires no schema changes', async () => {
+    const before = await db.all("SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name");
+    const first = await add('001', {
+      issuedAt: '2026-09-01',
+      isArchived: true,
+      invoiceAttachments: [
+        {
+          fileName: 'old.png',
+          fileType: 'image/png',
+          fileSize: 3,
+          data: new Uint8Array([1, 2, 3])
+        } as Invoice['invoiceAttachments'][number]
+      ]
+    });
+    await db.run('UPDATE invoice_client_snapshots SET "clientPeppolEndpointId" = ? WHERE "parentInvoiceId" = ?', [
+      'old-eu-id',
+      first.id
+    ]);
+    const second = await add('002', { issuedAt: '2026-09-02' });
+    const input = request([second, first], 15000);
+    expect((await recordBulkPayment(db, input)).success).toBe(true);
+    const rows = (await getAllInvoices(db)).data;
+    const a = rows.find(i => i.id === first.id)!,
+      b = rows.find(i => i.id === second.id)!;
+    expect(a.status).toBe(InvoiceStatus.paid);
+    expect(b.status).toBe(InvoiceStatus.partiallyPaid);
+    expect(Number(a.invoicePayments[0].amountCents)).toBe(10000);
+    expect(Number(b.invoicePayments[0].amountCents)).toBe(5000);
+    expect(a.invoicePayments[0].paidAt).toBe('2026-10-18T12:00:00.000Z');
+    expect(a.isArchived).toBe(true);
+    expect(a.invoiceClientSnapshot?.clientPeppolEndpointId).toBe('old-eu-id');
+    expect([...a.invoiceAttachments[0].data]).toEqual([1, 2, 3]);
+    expect(await db.all("SELECT name, sql FROM sqlite_master WHERE type = 'table' ORDER BY name")).toEqual(before);
+    expect((await recordBulkPayment(db, input)).success).toBe(false);
+    expect(await db.all('SELECT id FROM invoice_payments')).toHaveLength(2);
+  });
+  it('rolls back payments and statuses when the second write fails', async () => {
+    const first = await add('001'),
+      second = await add('002');
+    await db.run(
+      `CREATE TRIGGER fail_second_payment BEFORE INSERT ON invoice_payments WHEN NEW."parentInvoiceId" = ${second.id} BEGIN SELECT RAISE(ABORT, 'forced failure'); END;`
+    );
+    const result = await recordBulkPayment(db, request([first, second]));
+    expect(result.success).toBe(false);
+    expect(await db.all('SELECT id FROM invoice_payments')).toHaveLength(0);
+    expect((await getAllInvoices(db)).data.every(i => i.status === InvoiceStatus.unpaid)).toBe(true);
+    await db.run('DROP TRIGGER fail_second_payment');
+    expect((await recordBulkPayment(db, request([first, second]))).success).toBe(true);
+  });
+  it('rejects stale totals, mixed clients, invalid dates and overpayment before writing', async () => {
+    const first = await add('001');
+    const input = request([first]);
+    for (const changed of [
+      { ...input, clientId: 999 },
+      { ...input, paidAt: '2026-02-30' },
+      { ...input, allocations: [{ ...input.allocations[0], amountCents: 10001 }] },
+      { ...input, allocations: [...input.allocations, ...input.allocations] },
+      { ...input, allocations: [{ ...input.allocations[0], expectedTotalCents: 9999 }] }
+    ])
+      expect((await recordBulkPayment(db, changed)).success).toBe(false);
+    expect(await db.all('SELECT id FROM invoice_payments')).toHaveLength(0);
+    await db.run('UPDATE invoices SET "shippingFeeCents" = ? WHERE id = ?', [20000, first.id]);
+    expect((await recordBulkPayment(db, input)).success).toBe(false);
+  });
+  it('backfills and edits a historical payment while preserving legacy settlement, existing payments and an unknown status date', async () => {
+    const legacy = await add('001', { status: InvoiceStatus.paid });
+    await db.run('UPDATE invoices SET "paidAt" = NULL WHERE id = ?', [legacy.id]);
+    let saved: Invoice = (await getAllInvoices(db)).data.find(i => i.id === legacy.id)!;
+    for (const [amount, date] of [
+      ['2500', '2026-09-01'],
+      ['3000', '2026-09-15']
+    ]) {
+      const result = await updateInvoice(db, {
+        ...saved,
+        invoicePayments: [
+          ...saved.invoicePayments,
+          { amountCents: amount, paidAt: date, paymentMethod: 'Cash' } as Invoice['invoicePayments'][number]
+        ]
+      });
+      expect(result.success).toBe(true);
+      saved = result.data as Invoice;
+      expect(saved.status).toBe(InvoiceStatus.paid);
+      expect(saved.paidAt).toBeNull();
+    }
+    expect(saved.invoicePayments.map(p => Number(p.amountCents))).toEqual([2500, 3000]);
+    const firstPayment = saved.invoicePayments[0];
+    const result = await updateInvoice(db, {
+      ...saved,
+      invoicePayments: [
+        firstPayment,
+        {
+          ...saved.invoicePayments[1],
+          paidAt: '2026-09-16',
+          paymentMethod: 'Bank',
+          notes: 'Corrected receipt date'
+        }
+      ]
+    });
+    expect(result.success).toBe(true);
+    const changed = result.data as Invoice;
+    expect(changed.invoicePayments[0]).toEqual(firstPayment);
+    expect(changed.invoicePayments[1]).toMatchObject({
+      paidAt: '2026-09-16',
+      paymentMethod: 'Bank',
+      notes: 'Corrected receipt date'
+    });
+    expect(changed.status).toBe(InvoiceStatus.paid);
+    expect(changed.paidAt).toBeNull();
+  });
+  it('rejects concurrent duplicate batches and leaves legacy Paid records untouched', async () => {
+    const first = await add('001'),
+      legacy = await add('002', { status: InvoiceStatus.paid });
+    await db.run('UPDATE invoices SET "paidAt" = NULL WHERE id = ?', [legacy.id]);
+    const input = request([first]);
+    const results = await Promise.all([recordBulkPayment(db, input), recordBulkPayment(db, input)]);
+    expect(results.filter(r => r.success)).toHaveLength(1);
+    const saved = (await getAllInvoices(db)).data.find(i => i.id === legacy.id)!;
+    expect(saved.status).toBe(InvoiceStatus.paid);
+    expect(saved.invoicePayments).toHaveLength(0);
+    expect(await db.all('SELECT id FROM invoice_payments')).toHaveLength(1);
+  });
+});
 
 describe('receipt persistence and linked definitions', () => {
   let db: DatabaseAdapter;
