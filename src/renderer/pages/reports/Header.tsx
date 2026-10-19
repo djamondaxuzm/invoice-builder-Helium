@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { ReportDateType } from '../../shared/enums/reportDateType';
 import { ReportRangeType } from '../../shared/enums/reportRangeType';
 import type { InvoicesByCurrency } from '../../shared/types/invoice';
-import { toUTCISOString } from '../../shared/utils/formatFunctions';
+import { localDateRange } from '../../shared/utils/formatFunctions';
 import { useAppSelector } from '../../state/configureStore';
 import { selectSettings } from '../../state/pageSlice';
 import { RangeSetter } from './Modals/RangeSetter';
@@ -168,13 +168,7 @@ const HeaderComponent: FC<Props> = ({
 
   useEffect(() => {
     const range = getRangeForPreset(internalValue);
-    const fromUTC = toUTCISOString(range.from);
-    const toUTC = toUTCISOString(range.to);
-
-    setDates({
-      from: fromUTC,
-      to: toUTC
-    });
+    setDates(localDateRange(range.from, range.to));
   }, [internalValue, getRangeForPreset]);
 
   useEffect(() => {

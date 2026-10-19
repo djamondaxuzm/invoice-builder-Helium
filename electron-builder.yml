@@ -1,19 +1,22 @@
 appId: com.invoice-builder
-productName: Invoice Builder
+productName: Invoice Builder Helium
+executableName: Invoice Builder
 
 directories:
   output: release
 
 publish:
   provider: github
-  owner: piratuks
-  repo: invoice-builder
+  owner: djamondaxuzm
+  repo: invoice-builder-Helium
 
 files:
   - dist-fe/**
   - dist-be/**
   - node_modules/**
   - package.json
+  - LICENSE
+  - LICENSE-DISCLAIMER.md
 
 extraMetadata:
   main: dist-be/backend/main/main.cjs
@@ -23,6 +26,7 @@ forceCodeSigning: false
 afterPack: scripts/after-pack.cjs
 
 win:
+  icon: src/backend/main/assets/icon.ico
   target:
     - nsis
 
@@ -37,14 +41,14 @@ linux:
     - deb
     - AppImage
   category: Office
-  maintainer: 'Piratuks <evaldiz@gmail.com>'
+  maintainer: 'djamondaxuzm'
   icon: 'src/backend/main/assets/linux-icons'
 
 mac:
   target:
     - dmg
   category: public.app-category.productivity
-  icon: 'src/backend/main/assets/icon.icns'
+  icon: 'src/backend/main/assets/macos-icons/icon.icns'
 
 dmg:
   contents:

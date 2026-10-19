@@ -8,6 +8,7 @@ import { getDefaultValue } from '../utils/dbHelper';
 import { mapDatabaseError } from '../utils/errorFunctions';
 import { getHavingClauseFromFilters } from '../utils/filterFunctions';
 import { resolveItemRelations } from '../utils/relationsFunctions';
+import { sameDefinitionValue, updateWithSnapshots } from '../utils/linkedSnapshots';
 
 const itemFields: (keyof Item)[] = ['name', 'amount', 'unitId', 'categoryId', 'description', 'isArchived'];
 
@@ -105,7 +106,42 @@ export const addItem = async (db: DatabaseAdapter, data: Item) => {
 
 export const updateItem = async (db: DatabaseAdapter, data: Item) => {
   const handle = handleItemEntity<Item>(db, 'items', itemFields);
-  return handle(data, true);
+  return updateWithSnapshots(
+    db,
+    'items',
+    data.id,
+    () => handle(data, true),
+    async (before, after) => {
+      const assignments: string[] = [];
+      const params: unknown[] = [];
+      if (!sameDefinitionValue(before.name, after.name)) {
+        assignments.push('"itemName" = ?');
+        params.push(after.name);
+      }
+      if (!sameDefinitionValue(before.unitId, after.unitId)) {
+        assignments.push('"unitName" = ?');
+        params.push(after.unitName ?? null);
+      }
+      if (Number(before.amount ?? 0) !== Number(after.amount ?? 0)) {
+        const amount = Number(after.amount ?? 0);
+        if (!Number.isFinite(amount)) throw new Error('Invalid catalog price.');
+        assignments.push(`"unitPriceCents" = CAST(ROUND(? * (
+        SELECT cs."currencySubunit" FROM invoice_items ii
+        JOIN invoice_currency_snapshots cs ON cs."parentInvoiceId" = ii."parentInvoiceId"
+        WHERE ii."id" = invoice_item_snapshots."parentInvoiceItemId"
+      )) AS TEXT)`);
+        params.push(amount);
+      }
+      // Archiving changes no invoice fields; custom invoice prices also survive
+      // unrelated catalog edits. An explicit catalog price change updates all uses.
+      if (assignments.length)
+        await db.run(
+          `UPDATE invoice_item_snapshots SET ${assignments.join(', ')}
+      WHERE "parentInvoiceItemId" IN (SELECT "id" FROM invoice_items WHERE "itemId" = ?)`,
+          [...params, data.id]
+        );
+    }
+  );
 };
 
 export const deleteItem = async (db: DatabaseAdapter, id: number) => {

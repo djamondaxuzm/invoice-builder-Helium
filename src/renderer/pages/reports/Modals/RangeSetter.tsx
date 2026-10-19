@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, Grid } from '@mui/material';
 import { memo, useEffect, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { localDateRange } from '../../../shared/utils/formatFunctions';
+import { billingDate } from '../../../shared/utils/billingPeriod';
 import { Datepicker } from '../../../shared/components/inputs/datepicker/Datepicker';
 import { ModalAppBar } from '../../../shared/components/layout/modalAppBar/ModalAppBar';
 import { useForm } from '../../../shared/hooks/form/useForm';
@@ -40,11 +42,14 @@ const RangeSetterComponent: FC<Props> = ({ isOpen, fromDate, to, onCancel = () =
     <Dialog open={isOpen} onClose={onCancel}>
       <ModalAppBar
         title={t('reports.selectDateRange')}
-        isFormValid={true}
+        isFormValid={
+          !!billingDate(form.from) && !!billingDate(form.to) && billingDate(form.from) <= billingDate(form.to)
+        }
         formData={form}
         onClose={onCancel}
         onSave={data => {
-          onSave(data as { from: string; to: string });
+          const range = data as { from: string; to: string };
+          onSave(localDateRange(range.from, range.to));
         }}
       />
       <DialogContent sx={{ minWidth: '300px' }}>

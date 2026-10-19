@@ -12,6 +12,7 @@ interface Props {
   label: string;
   value?: string;
   required?: boolean;
+  disabled?: boolean;
   error?: boolean;
   format: DateFormat;
   onChange?: (value?: string) => void;
@@ -20,6 +21,7 @@ export const Datepicker: React.FC<Props> = ({
   value,
   label,
   required = false,
+  disabled = false,
   error = false,
   format,
   onChange = () => {}
@@ -29,6 +31,7 @@ export const Datepicker: React.FC<Props> = ({
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <DatePicker
         sx={{ width: '100%' }}
+        disabled={disabled}
         views={['year', 'month', 'day']}
         openTo="day"
         label={label}
@@ -53,6 +56,7 @@ export const Datepicker: React.FC<Props> = ({
                 startAdornment:
                   !required && value ? (
                     <IconButton
+                      disabled={disabled}
                       size="small"
                       aria-label={t('ariaLabel.clear')}
                       onClick={e => {

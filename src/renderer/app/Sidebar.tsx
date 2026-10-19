@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getApi } from '../shared/api/restApi';
+import heliumIcon from '../assets/helium.svg';
 import { MenuList } from '../shared/components/lists/menuList/MenuList';
 import { Confirmation } from '../shared/components/modals/confirmation';
 import type { MenuItem } from '../shared/types/menuItem';
@@ -303,7 +304,7 @@ export const Sidebar: FC = () => {
             minHeight: 64
           }}
         >
-          <Box sx={{ flexGrow: 1 }}></Box>
+          {open && <Box component="img" src={heliumIcon} alt="" sx={{ width: 36, height: 36, mr: 1 }} />}
           {open && (
             <Typography
               variant="h6"

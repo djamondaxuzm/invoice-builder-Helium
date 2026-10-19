@@ -6,13 +6,19 @@
 
 1. Save the individual daily invoices as usual.
 2. Open **Invoices → Billing period PDF**.
-3. Optionally enter **From date** and **To date**. Both endpoints are included; changing either clears the current selection.
-4. Select invoices with the same business, client and currency. **Select shown** selects every invoice currently listed; clear any incompatible selections before exporting.
-5. Choose **Download PDF**. Invoices appear in date order with their line items and totals, followed by the period total, paid amount and balance due. Paid invoices count as settled; overpayments remain a credit.
+3. Choose a **Client** first, then optionally enter **From date** and **To date**. Both endpoints are included. Changing the client or dates clears the current selection.
+4. Invoices appear oldest first with their issue date, invoice number, business, currency, status, line-item count and receipt count. Click a row to select only that invoice; **Ctrl-click** (or **Cmd-click**) toggles individual rows, and **Shift-click** selects a range from the last clicked row. **Ctrl+Shift-click** adds a range. Checkboxes toggle without clearing other selections. **Select shown** selects every visible invoice. The selection must still use one business and currency.
+5. Choose **Download PDF**. Each invoice starts on its own page in date order, with item quantities, unit prices, taxes, subtotal and customer notes. Saved PNG/JPEG receipt images follow their invoice. The final summary lists all invoices, charges before tax, tax, total billed, payments and balance due. Paid invoices count as settled; overpayments remain a credit.
 
-For invoices 001–007, select those seven invoices to produce one statement covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. It does not merge original PDF attachments or save a reusable billing-period record. Labels in this initial billing-period export are English.
+For invoices 001–007, select those seven invoices to produce one combined document covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. Receipt images are supporting documents and never add charges to the total. Unsupported attachment types produce an error instead of being silently omitted. The export does not merge PDF attachments or save a reusable billing-period record. Labels are English; dates use your selected date format.
 
 ### Invoice save and date behavior
+
+Editing a business or client definition updates the corresponding changed contact/logo fields on all linked invoices and quotes. Changing a catalog item's name, unit or price updates those fields on existing invoice lines, including archived invoices. Quantities, payments, custom notes and per-invoice tax rates remain unchanged; tax amounts recalculate from the updated price. The catalog does not have a shared tax-rate setting. A price change applies the catalog amount using each invoice currency's subunit; it does not perform currency conversion.
+
+Archiving a catalog item only removes it from the active catalog: existing invoice lines remain intact. Archiving alone, or editing an unrelated catalog field, preserves invoice-specific prices. Explicit catalog price edits replace those prices on linked invoices. A definition update and its linked snapshot updates are saved atomically. Previously exported PDF files do not change; export again to use the updated definitions.
+
+Saving an invoice retains unchanged receipt images by reference instead of uploading and rewriting them. New receipts still include their image data, and removing a receipt removes it when you save. Dirty checking compares shared image buffers without serializing them. Image conversion caching is weakly referenced and capped at 16 MiB of source image data and 64 entries.
 
 New invoices start with today's local date. Picking a date uses that same local calendar day in the invoice list and PDF; clearing an optional due date removes it from the form. A successful save clears the unsaved-changes warning. A failed save keeps the draft open for correction and retry.
 
@@ -1232,3 +1238,17 @@ To generate valid UBL/Peppol XML or XRechnung (UBL 2.1) XML, additional fields a
 >
 > Use a UBL Peppol XML validator (e.g., [https://peppolvalidator.com/](https://peppolvalidator.com/)) to ensure compliance before sending.
 > Use a XRechnung (UBL 2.1) XML validator (e.g., [https://validator.invoice-portal.de/](https://validator.invoice-portal.de/)) to ensure compliance before sending.
+
+### Combined billing-period branding and logos
+
+Billing-period PDFs use a consistent invoice layout with a company header, shaded item table, invoice subtotal and notes. Each invoice preserves its saved company logo, contact details, accent color, font family, logo size and A4/Letter paper choice. The final summary uses the first invoice's branding and highlights the combined balance. Select invoices with matching branding if you want a uniform period. Long item lists and descriptions continue onto additional pages, and every page includes its position in the complete document.
+
+Company logo uploads accept files up to 20 MB. After cropping, PNG/JPEG logos of at least 128 KB are checked for optimization: images are reduced to at most 1024 pixels on the longest edge, preserving their aspect ratio; PNG transparency is retained. A replacement is used only when it is smaller and has the same image type. Small images are not enlarged. Original data is retained when optimization is unsupported or fails. The optimized business logo is used by newly created invoice snapshots.
+
+Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. Logos appear on the invoice pages and final summary. Receipt images retain their original resolution for readability.
+
+Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
+
+## Upload and crop images in Helium
+
+Uploads open with the entire image selected and fitted to the window. Drag a crop handle to trim it, or choose **Use full image** to reset. Resizing the window preserves the selected area. Saving uses original source pixels, not the smaller preview. The same cropper is used for logos, receipts, signatures, QR codes and watermarks. Business logos keep their proportions in invoice PDFs.

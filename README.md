@@ -1,19 +1,22 @@
-# Invoice Builder
+# Invoice Builder Helium
 
-[![License](https://img.shields.io/github/license/piratuks/invoice-builder)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/piratuks/invoice-builder/total)](https://github.com/piratuks/invoice-builder/releases)
-[![Latest Release](https://img.shields.io/github/v/release/piratuks/invoice-builder)](https://github.com/piratuks/invoice-builder/releases)
+<img src="src/renderer/assets/helium.svg" width="96" alt="Helium atom icon" />
+
+[![License](https://img.shields.io/github/license/djamondaxuzm/invoice-builder-Helium)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/djamondaxuzm/invoice-builder-Helium/total)](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
+[![Latest Release](https://img.shields.io/github/v/release/djamondaxuzm/invoice-builder-Helium)](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
 ![Windows](https://img.shields.io/badge/Windows-10%2B-blue?logo=windows)
 ![Linux](https://img.shields.io/badge/Linux-DEB%20%7C%20AppImage-blue?logo=linux)
 ![macOS](https://img.shields.io/badge/macOS-DMG-lightgrey?logo=apple&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-blue?style=flat-square&logo=docker&logoColor=white)
-[![GHCR](https://img.shields.io/badge/ghcr.io-invoice--builder-blue?style=flat-square&logo=github)](https://github.com/piratuks/invoice-builder/pkgs/container/invoice-builder)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FF813F?style=flat&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/evaldizi)
 
-<a href="https://trendshift.io/repositories/17939?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-17939" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/17939" alt="piratuks%2Finvoice-builder | Trendshift" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/17939?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17939" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17939/daily?language=TypeScript" alt="piratuks%2Finvoice-builder | Trendshift" width="250" height="55"/></a>
+**djamondaxuzm's personal Invoice Builder Helium fork.**
+
+Helium has its own atom icon, app title, support links and update feed. Required upstream MIT notices remain in LICENSE.
 
 **Offline invoicing with full data ownership.**
+
+This fork includes client-first combined billing-period PDFs with date-ordered Ctrl/Shift selection, faster image-heavy invoice saves, and automatic propagation of edited business/client details and catalog prices to linked invoices. Archiving catalog items does not remove them from existing invoices. See [the billing-period and editing guide](TUTORIAL.md#export-a-billing-period) for the update rules.
 
 **Invoice Builder** is an **offline-first, open-source invoicing and quoting application** for freelancers and small businesses who want full control over their data.
 
@@ -158,17 +161,7 @@ This option is ideal if you want:
 
 ### Docker Image
 
-A pre-built image is published automatically to GitHub Container Registry on every push to `main` and on every version tag:
-
-```bash
-ghcr.io/piratuks/invoice-builder:latest
-```
-
-Pull it at any time with:
-
-```bash
-docker pull ghcr.io/piratuks/invoice-builder:latest
-```
+Build this personal fork locally with `docker compose up --build -d` (or `docker compose -f docker-compose.standalone.yml up --build -d`). These configurations build the checked-out Helium source instead of pulling the upstream app.
 
 > **ℹ️ `VITE_API_URL` is no longer needed for Docker deployments.**
 > The Docker image now uses **nginx** as the frontend server. Nginx proxies all `/api/*` requests
@@ -234,7 +227,7 @@ docker compose -f docker-compose.standalone.yml up -d
 
 Download the latest release from the **GitHub Releases** page:
 
-➡️ [Download Latest Release](https://github.com/piratuks/invoice-builder/releases)
+➡️ [Download Latest Release](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
 
 No account required.
 
@@ -350,8 +343,8 @@ Clone the repository, install dependencies, and start the development server:
 #### 🖥️ Electron (Desktop App)
 
 ```bash
-git clone https://github.com/piratuks/invoice-builder.git
-cd invoice-builder
+git clone https://github.com/djamondaxuzm/invoice-builder-Helium.git
+cd invoice-builder-Helium
 npm install
 npm run dev
 ```
@@ -359,8 +352,8 @@ npm run dev
 #### 🌐 Webserver / Browser
 
 ```bash
-git clone https://github.com/piratuks/invoice-builder.git
-cd invoice-builder
+git clone https://github.com/djamondaxuzm/invoice-builder-Helium.git
+cd invoice-builder-Helium
 npm install
 npm run dev:react
 npm run dev:webserver
@@ -448,7 +441,7 @@ VITE_API_URL={url} Backend webserver URL when running without Electron (Web/Dock
 Contributions of all kinds are welcome - bug reports, feature ideas, documentation improvements, and pull requests.  
 Please open an issue before starting major work to ensure alignment.
 
-- Report issues or features here: [ISSUES/FEATURES](https://github.com/piratuks/invoice-builder/issues)
+- Report issues or features here: [ISSUES/FEATURES](https://github.com/djamondaxuzm/invoice-builder-Helium/issues)
 - Feature requests and discussions are welcome
 - Please follow [guidelines](CONTRIBUTING.md)
 - For agentic/AI-assisted development workflows, see [AGENTS.md](AGENTS.md)
@@ -475,14 +468,4 @@ Details about supported versions and update policy will be documented here.
 This project is licensed under the **MIT License**.  
 See the [LICENSE](LICENSE) file for details.
 
-## ☕ Support
-
-Invoice Builder is maintained by a single developer. Your support helps keep updates coming and new features rolling out!
-
-Want to be a part of this project’s journey? You can support it here: [Buy Me a Coffee](https://www.buymeacoffee.com/evaldizi)
-
-### 💖 Supporters
-
-See the full list of supporters here: [Supporters](SUPPORTERS.md)
-
-Every contribution counts, even a small one, and your name will appear here as a supporter of Invoice Builder.
+Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.

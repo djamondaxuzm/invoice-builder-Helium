@@ -109,7 +109,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('get-next-sequence', data),
   getEInvoiceXML: (data: { invoiceId: number; einvoice: EInvoice }) => ipcRenderer.invoke('get-einvoice-xml', data),
   getCustomHeaders: (type: InvoiceType) => ipcRenderer.invoke('get-custom-headers', type),
-  getAllInvoices: (type?: InvoiceType, filter?: FilterData[]) => ipcRenderer.invoke('get-all-invoices', type, filter),
+  getAllInvoices: (
+    type?: InvoiceType,
+    filter?: FilterData[],
+    options?: { id?: number; attachmentMetadataOnly?: boolean }
+  ) => ipcRenderer.invoke('get-all-invoices', type, filter, options),
   deleteInvoice: (id: number) => ipcRenderer.invoke('delete-invoice', id),
   updateInvoice: (data: InvoiceUpdate) => ipcRenderer.invoke('update-invoice', data),
   addInvoice: (data: InvoiceAdd) => ipcRenderer.invoke('add-invoice', data),

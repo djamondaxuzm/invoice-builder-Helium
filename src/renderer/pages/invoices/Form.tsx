@@ -21,6 +21,8 @@ import { DEFAULT_TABLE_FIELD_SORT_ORDERS } from '../../state/constant';
 import { addToast } from '../../state/pageSlice';
 import { InvoiceForm } from './Form/index';
 import { InvoicesPreview } from './Preview';
+import { Alert, Button, CircularProgress } from '@mui/material';
+import { loadInvoiceDetails } from '../../shared/utils/loadInvoiceDetails';
 
 interface Props {
   invoice?: Invoice;
@@ -42,7 +44,6 @@ const InvoiceFormComponent: FC<Props> = ({
 }) => {
   const [invoiceForm, setInvoiceForm] = useState<InvoiceFromData | undefined>(undefined);
   const [isFormValid, setIsFormValid] = useState(false);
-  const debounceTimerRef = useRef<number | undefined>(undefined);
   const [, startTransition] = useTransition();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
@@ -303,23 +304,12 @@ const InvoiceFormComponent: FC<Props> = ({
   useEffect(() => {
     if (!invoiceForm) return;
 
-    if (debounceTimerRef.current !== undefined) {
-      window.clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = window.setTimeout(() => {
-      handleChange({
-        invoice: invoiceForm,
-        isFormValid,
-        description: invoiceForm.layoutId == null ? t('common.layoutRequired') : t('common.invalidForm')
-      });
-    }, 250);
-
-    return () => {
-      if (debounceTimerRef.current !== undefined) {
-        window.clearTimeout(debounceTimerRef.current);
-      }
-    };
+    // Save must see the current edit immediately. Only preview rendering may lag.
+    handleChange({
+      invoice: invoiceForm,
+      isFormValid,
+      description: invoiceForm.layoutId == null ? t('common.layoutRequired') : t('common.invalidForm')
+    });
   }, [invoiceForm, isFormValid, t, handleChange]);
 
   if (mode === InvoiceFormMode.edit) {
@@ -343,4 +333,42 @@ const InvoiceFormComponent: FC<Props> = ({
   );
 };
 
-export const Form = memo(InvoiceFormComponent);
+const FormWithDetails: FC<Props> = props => {
+  const { invoice, handleChange } = props;
+  const [loaded, setLoaded] = useState<{ source?: Invoice; invoice?: Invoice; error?: string }>({});
+  const [retry, setRetry] = useState(0);
+  const onChangeRef = useRef(handleChange);
+  useEffect(() => {
+    onChangeRef.current = handleChange;
+  }, [handleChange]);
+  useEffect(() => {
+    if (!invoice || invoice.attachmentsLoaded !== false) return;
+    let cancelled = false;
+    onChangeRef.current?.({ invoice, isFormValid: false });
+    setLoaded({ source: invoice });
+    void loadInvoiceDetails(invoice)
+      .then(full => {
+        if (!cancelled) setLoaded({ source: invoice, invoice: full });
+      })
+      .catch(error => {
+        if (!cancelled)
+          setLoaded({ source: invoice, error: error instanceof Error ? error.message : 'Could not load invoice.' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice, retry]);
+  if (invoice?.attachmentsLoaded === false) {
+    if (loaded.source !== invoice || (!loaded.invoice && !loaded.error))
+      return <CircularProgress aria-label="Loading invoice details" />;
+    if (loaded.error)
+      return (
+        <Alert severity="error" action={<Button onClick={() => setRetry(value => value + 1)}>Retry</Button>}>
+          {loaded.error}
+        </Alert>
+      );
+    return <InvoiceFormComponent {...props} invoice={loaded.invoice} />;
+  }
+  return <InvoiceFormComponent {...props} />;
+};
+export const Form = memo(FormWithDetails);

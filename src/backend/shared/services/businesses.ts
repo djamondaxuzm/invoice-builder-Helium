@@ -5,6 +5,7 @@ import type { FilterData } from '../types/invoiceFilter';
 import type { Response } from '../types/response';
 import { getAllEntities, handleEntity } from '../utils/entitiesFunctions';
 import { mapDatabaseError } from '../utils/errorFunctions';
+import { syncContactSnapshot, updateWithSnapshots } from '../utils/linkedSnapshots';
 
 const businessFields: (keyof Business)[] = [
   'name',
@@ -77,7 +78,21 @@ export const updateBusiness = (db: DatabaseAdapter, data: Business): Promise<Res
           THEN i."id" END)
       `
   });
-  return handle(data, true);
+  return updateWithSnapshots(
+    db,
+    'businesses',
+    data.id,
+    () => handle(data, true),
+    (before, after) =>
+      syncContactSnapshot(
+        db,
+        'business',
+        data.id,
+        before,
+        after,
+        businessFields.filter(field => !['website', 'description', 'isArchived'].includes(field))
+      )
+  );
 };
 
 export const deleteBusiness = async (db: DatabaseAdapter, id: number) => {

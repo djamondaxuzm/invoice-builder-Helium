@@ -135,6 +135,7 @@ export interface InvoiceLayoutSnapshots {
 }
 
 export interface Invoice {
+  attachmentsLoaded?: boolean;
   id?: number;
   invoiceType: InvoiceType;
   convertedFromQuotationId?: number;
@@ -189,6 +190,7 @@ export interface Invoice {
 }
 
 export interface InvoiceAttachment {
+  retainExistingData?: boolean;
   id: number;
   parentInvoiceId: number;
   fileSize: number;

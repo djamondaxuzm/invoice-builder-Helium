@@ -455,10 +455,16 @@ export const webApi = () => {
       }),
     getCustomHeaders: async (type: InvoiceType) =>
       apiGet<Response<CustomFieldMeta[]>>('/api/invoices/headers', { type: type }),
-    getAllInvoices: async (type?: InvoiceType, filter?: FilterData[]) => {
+    getAllInvoices: async (
+      type?: InvoiceType,
+      filter?: FilterData[],
+      options?: { id?: number; attachmentMetadataOnly?: boolean }
+    ) => {
       const params: Record<string, string> = {};
       if (type) params.type = type;
       if (filter?.length) params.filter = JSON.stringify(filter);
+      if (options?.id !== undefined) params.id = String(options.id);
+      if (options?.attachmentMetadataOnly) params.attachmentMetadataOnly = 'true';
 
       const response = await apiGet<Response<InvoiceWeb[]>>(
         '/api/invoices',

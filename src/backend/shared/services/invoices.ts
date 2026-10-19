@@ -26,8 +26,11 @@ import { getDefaultValue } from '../utils/dbHelper';
 import { generateInvoiceXML } from '../utils/einvoice/xmlProfiles';
 import { mapDatabaseError } from '../utils/errorFunctions';
 import { getWhereClauseFromFilters } from '../utils/filterFunctions';
+import { syncAttachments } from '../utils/syncAttachments';
+import { serializeCustomField, syncInvoiceItems } from '../utils/invoiceItems';
 
 type GetInvoicesOptions = {
+  attachmentMetadataOnly?: boolean;
   id?: number;
   type?: 'invoice' | 'quotation';
   filter?: FilterData[];
@@ -200,6 +203,15 @@ const handleEntity =
       let lastID: number = -1;
 
       if (isUpdate) {
+        const parent = ['parentInvoiceId', 'parentInvoiceItemId'].find(key => fields.includes(key as keyof T));
+        if (
+          parent &&
+          !(await db.get(`SELECT "id" FROM ${table} WHERE "id" = ? AND "${parent}" = ?`, [
+            data.id,
+            data[parent as keyof T]
+          ]))
+        )
+          throw new Error('The record does not belong to this invoice. Reload before saving.');
         const setClause =
           fields.map(f => `"${String(f)}" = ?`).join(', ') +
           `, "updatedAt" = ${getDefaultValue("(datetime('now'))", db.type)}`;
@@ -348,7 +360,7 @@ const processItems = async (
     const r = await handlers.handleInvoiceItems({
       ...item,
       parentInvoiceId,
-      customField: item.customField ? JSON.stringify(item.customField) : undefined
+      customField: serializeCustomField(item.customField)
     } as unknown as InvoiceItem);
     if (!r.success) {
       await rollbackOrThrow(db);
@@ -377,8 +389,13 @@ const processPayments = async (
 ) => {
   for (const payment of payments ?? []) {
     if (payment.id) {
-      const existing = await db.get(`SELECT "id" FROM invoice_payments WHERE "id" = ?`, [payment.id]);
+      const existing = await db.get<InvoicePayment>(
+        `SELECT "id", "parentInvoiceId" FROM invoice_payments WHERE "id" = ?`,
+        [payment.id]
+      );
       if (existing) {
+        if (existing.parentInvoiceId !== parentInvoiceId)
+          throw new Error('The payment does not belong to this invoice.');
         const r = await handlers.handleInvoicePayments({ ...payment, parentInvoiceId } as InvoicePayment, true);
         if (!r.success) {
           await rollbackOrThrow(db);
@@ -485,20 +502,23 @@ const processSequenceOnUpdate = async (
   return processSequence(db, handlers, data);
 };
 
-const setPaidAtAndClosedAt = (invoice: Invoice): Invoice => {
+const setPaidAtAndClosedAt = (invoice: Invoice, previous?: Invoice): Invoice => {
   const now = new Date().toISOString();
-  if (invoice.status === InvoiceStatus.paid) {
-    invoice.paidAt = now;
-    invoice.closedAt = undefined;
-  } else if (invoice.status === InvoiceStatus.closed) {
-    invoice.closedAt = now;
-    invoice.paidAt = undefined;
-  } else {
-    invoice.paidAt = undefined;
-    invoice.closedAt = undefined;
-  }
-
-  return invoice;
+  return {
+    ...invoice,
+    paidAt:
+      invoice.status === InvoiceStatus.paid
+        ? previous?.status === InvoiceStatus.paid
+          ? (previous.paidAt ?? now)
+          : now
+        : undefined,
+    closedAt:
+      invoice.status === InvoiceStatus.closed
+        ? previous?.status === InvoiceStatus.closed
+          ? (previous.closedAt ?? now)
+          : now
+        : undefined
+  };
 };
 
 type SequenceHandler = (data: InvoiceSequence, isUpdate?: boolean) => Promise<Response<number>>;
@@ -614,7 +634,8 @@ const getDuplicateInvoiceNumber = async (
 };
 
 const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => {
-  const { id, type, filter } = options;
+  const { id, type, filter, attachmentMetadataOnly } = options;
+  if (id !== undefined && (!Number.isSafeInteger(id) || id <= 0)) throw new Error('Invalid invoice ID.');
 
   const whereClause = filter
     ? getWhereClauseFromFilters({
@@ -664,8 +685,14 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
     invoiceLayoutSnapshots
   ] = await Promise.all([
     db.all<InvoicePayment>(`SELECT * FROM invoice_payments WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
-    db.all<InvoiceItem>(`SELECT * FROM invoice_items WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
-    db.all<InvoiceAttachment>(`SELECT * FROM attachments WHERE "parentInvoiceId" IN (${placeholders})`, invoiceIds),
+    db.all<InvoiceItem>(
+      `SELECT * FROM invoice_items WHERE "parentInvoiceId" IN (${placeholders}) ORDER BY "id"`,
+      invoiceIds
+    ),
+    db.all<InvoiceAttachment>(
+      `SELECT ${attachmentMetadataOnly ? '"id", "parentInvoiceId", "fileName", "fileType", "fileSize", "createdAt", "updatedAt"' : '*'} FROM attachments WHERE "parentInvoiceId" IN (${placeholders}) ORDER BY "id"`,
+      invoiceIds
+    ),
     db.all<InvoiceBusinessSnapshots>(
       `SELECT * FROM invoice_business_snapshots WHERE "parentInvoiceId" IN (${placeholders})`,
       invoiceIds
@@ -698,32 +725,57 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
 
   const invoiceItemIds = invoiceItems.map(i => i.id) as number[];
   const placeholdersItems = invoiceItemIds.map(() => '?').join(', ');
-  const invoiceItemSnapshots = await db.all<InvoiceItemSnapshots>(
-    `SELECT sps.* FROM invoice_item_snapshots as sps WHERE "parentInvoiceItemId" IN (${placeholdersItems})`,
-    invoiceItemIds
-  );
+  const invoiceItemSnapshots = invoiceItemIds.length
+    ? await db.all<InvoiceItemSnapshots>(
+        `SELECT sps.* FROM invoice_item_snapshots as sps WHERE "parentInvoiceItemId" IN (${placeholdersItems})`,
+        invoiceItemIds
+      )
+    : [];
+
+  const group = <T extends { parentInvoiceId: number }>(rows: T[]) => {
+    const index = new Map<number, T[]>();
+    for (const row of rows) {
+      const bucket = index.get(row.parentInvoiceId);
+      if (bucket) bucket.push(row);
+      else index.set(row.parentInvoiceId, [row]);
+    }
+    return index;
+  };
+  const paymentsByInvoice = group(invoicePayments);
+  const itemsByInvoice = group(invoiceItems);
+  const attachmentsByInvoice = group(invoiceAttachments);
+  const businessesByInvoice = group(invoiceBusinessSnapshots);
+  const clientsByInvoice = group(invoiceClientSnapshots);
+  const currenciesByInvoice = group(invoiceCurrencySnapshots);
+  const customizationsByInvoice = group(invoiceCustomization);
+  const stylesByInvoice = group(invoiceStyleProfileSnapshots);
+  const banksByInvoice = group(invoiceBankSnapshots);
+  const layoutsByInvoice = group(invoiceLayoutSnapshots);
+  const snapshotsByItem = new Map(invoiceItemSnapshots.map(row => [row.parentInvoiceItemId, row]));
 
   return invoices.map(invoice => {
-    const specificCustomization = invoiceCustomization.find(p => p.parentInvoiceId === invoice.id);
-    const layoutSnapshot = invoiceLayoutSnapshots.find(snapshot => snapshot.parentInvoiceId === invoice.id);
+    const invoiceId = invoice.id!;
+    const specificCustomization = customizationsByInvoice.get(invoiceId)?.[0];
+    const layoutSnapshot = layoutsByInvoice.get(invoiceId)?.[0];
 
     return {
       ...invoice,
-      invoicePayments: invoicePayments.filter(p => p.parentInvoiceId === invoice.id),
-      invoiceItems: invoiceItems
-        .filter(p => p.parentInvoiceId === invoice.id)
-        .map(p => {
-          return {
-            ...p,
-            invoiceItemSnapshot: invoiceItemSnapshots.find(iis => iis.parentInvoiceItemId === p.id),
-            customField: p.customField && typeof p.customField === 'string' ? JSON.parse(p.customField) : p.customField
-          };
-        }),
-      invoiceAttachments: invoiceAttachments.filter(p => p.parentInvoiceId === invoice.id),
-      invoiceBankSnapshot: invoiceBankSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceBusinessSnapshot: invoiceBusinessSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceClientSnapshot: invoiceClientSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceCurrencySnapshot: invoiceCurrencySnapshots.find(p => p.parentInvoiceId === invoice.id),
+      invoicePayments: paymentsByInvoice.get(invoiceId) ?? [],
+      invoiceItems: (itemsByInvoice.get(invoiceId) ?? []).map(p => {
+        return {
+          ...p,
+          invoiceItemSnapshot: snapshotsByItem.get(p.id),
+          customField: p.customField ? JSON.parse(serializeCustomField(p.customField)!) : p.customField
+        };
+      }),
+      attachmentsLoaded: !attachmentMetadataOnly,
+      invoiceAttachments: (attachmentsByInvoice.get(invoiceId) ?? []).map(attachment =>
+        attachmentMetadataOnly ? { ...attachment, data: new Uint8Array() } : attachment
+      ),
+      invoiceBankSnapshot: banksByInvoice.get(invoiceId)?.[0],
+      invoiceBusinessSnapshot: businessesByInvoice.get(invoiceId)?.[0],
+      invoiceClientSnapshot: clientsByInvoice.get(invoiceId)?.[0],
+      invoiceCurrencySnapshot: currenciesByInvoice.get(invoiceId)?.[0],
       invoiceCustomization: specificCustomization
         ? {
             ...specificCustomization,
@@ -746,7 +798,7 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
                 : layoutSnapshot.layoutSchema
           }
         : undefined,
-      invoiceStyleProfileSnapshot: invoiceStyleProfileSnapshots.find(p => p.parentInvoiceId === invoice.id)
+      invoiceStyleProfileSnapshot: stylesByInvoice.get(invoiceId)?.[0]
     };
   });
 };
@@ -815,8 +867,13 @@ export const getCustomHeaders = async (db: DatabaseAdapter, type: 'invoice' | 'q
   return { success: true, data: headersMeta };
 };
 
-export const getAllInvoices = async (db: DatabaseAdapter, type?: 'invoice' | 'quotation', filter?: FilterData[]) => {
-  const finalInvoices = await getInvoices(db, { type, filter });
+export const getAllInvoices = async (
+  db: DatabaseAdapter,
+  type?: 'invoice' | 'quotation',
+  filter?: FilterData[],
+  options: { id?: number; attachmentMetadataOnly?: boolean } = {}
+) => {
+  const finalInvoices = await getInvoices(db, { type, filter, ...options });
   return { success: true, data: finalInvoices };
 };
 
@@ -982,7 +1039,6 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
   const {
     handleInvoice,
     handleInvoicePayments,
-    handleAttachments,
     handleInvoiceBusinessSnapshots,
     handleInvoiceBankSnapshots,
     handleInvoiceStyleProfileSnapshots,
@@ -1004,7 +1060,7 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       return { success: false, key: 'error.invoiceNotFound' };
     }
 
-    const formatedData = setPaidAtAndClosedAt(data);
+    const formatedData = setPaidAtAndClosedAt(data, currentInvoice);
 
     const result = await handleInvoice(formatedData, true);
     if (!result.success || !data.id) {
@@ -1121,13 +1177,13 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       }
     }
 
-    await db.run('DELETE FROM invoice_items WHERE "parentInvoiceId" = ?;', [data.id]);
+    const itemsToInsert = await syncInvoiceItems(db, data.id, data.invoiceItems ?? []);
 
     const itemsResult = await processItems(
       db,
       { handleInvoiceItems, handleInvoiceItemSnapshots },
       data.id,
-      data.invoiceItems
+      itemsToInsert
     );
     if (!itemsResult.success) {
       return { success: false, key: itemsResult.key, message: itemsResult.message };
@@ -1148,11 +1204,7 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       return { success: false, key: paymentsResult.key, message: paymentsResult.message };
     }
 
-    await db.run('DELETE FROM attachments WHERE "parentInvoiceId" = ?;', [data.id]);
-    const attachmentsResult = await processAttachments(db, { handleAttachments }, data.id, data.invoiceAttachments);
-    if (!attachmentsResult.success) {
-      return { success: false, key: attachmentsResult.key, message: attachmentsResult.message };
-    }
+    await syncAttachments(db, data.id, data.invoiceAttachments ?? []);
 
     const newResult = await getInvoices(db, { id: data.id });
 
