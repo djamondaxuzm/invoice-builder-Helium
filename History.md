@@ -10,6 +10,7 @@ New features & improvements
 
 Bug Fixes
 
+- Reconcile report totals with an invoice ledger/CSV, end current-period presets today, exclude future payments from received cash, and accumulate chart amounts in integer minor units. Prevent legacy contact snapshots from duplicating or hiding invoice rows; tolerate absent optional charges in older data.
 - Include the whole final local day and matching currency snapshots in reporting. Keep invoice issue dates separate from payment dates, retain currency selection, and preserve the prior range when custom selection is canceled.
 - Share invoice monetary math across PDF, reporting and payments; include item-exclusive taxes alongside invoice-inclusive tax, and round balances to currency minor units before assigning payment status.
 - Update edited payment dates, methods and notes alongside amounts. Keep overpayment credits separate from other invoices' debts and report load errors explicitly.

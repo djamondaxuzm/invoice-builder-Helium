@@ -6,7 +6,14 @@ import { InvoiceItemTaxType, InvoiceTaxType } from '../shared/enums/taxType';
 import { DiscountType } from '../shared/enums/discountType';
 import { PaymentType } from '../shared/enums/paymentType';
 import { ReportRangeType } from '../shared/enums/reportRangeType';
-import { buildReport, getReportOptions, getReportRange, reportCsv, reportDay } from '../shared/utils/reportFunctions';
+import {
+  buildReport,
+  getReportOptions,
+  getReportRange,
+  getReportTrend,
+  reportCsv,
+  reportDay
+} from '../shared/utils/reportFunctions';
 import { localDateRange } from '../shared/utils/formatFunctions';
 import type { Invoice } from '../shared/types/invoice';
 
@@ -21,6 +28,24 @@ const payment = (amount: string, date = '2026-10-18', method = PaymentType.bank)
 const report = (invoices: Invoice[], dates = range) => buildReport(invoices, dates, currency, {}, today);
 
 describe('report calendar ranges', () => {
+  it.each([
+    [ReportRangeType.this_month, '2026-10-01'],
+    [ReportRangeType.this_quarter, '2026-10-01'],
+    [ReportRangeType.this_year, '2026-01-01']
+  ])('current period %s ends today and does not include future invoices', (preset, firstDay) => {
+    const dates = getReportRange(preset, today);
+    expect(reportDay(dates.from)).toBe(firstDay);
+    expect(reportDay(dates.to)).toBe('2026-10-18');
+    const result = report(
+      [
+        invoice(1, { issuedAt: firstDay }),
+        invoice(2, { issuedAt: '2026-10-18T23:59:59' }),
+        invoice(3, { issuedAt: '2026-10-19' })
+      ],
+      dates
+    );
+    expect(result.billed).toBe(200);
+  });
   it.each(['2026-03-08', '2026-11-01', '2026-10-18'])(
     'includes all of today and exactly 30 local days across %s',
     day => {
@@ -72,6 +97,56 @@ describe('report calendar ranges', () => {
 });
 
 describe('reconciled invoice and cash reporting', () => {
+  it('counts a repeated invoice ID once without merging distinct invoices sharing a number', () => {
+    const first = invoice(1, { issuedAt: '2026-10-01', invoicePayments: [payment('2500')] });
+    const result = report([first, first, invoice(2, { issuedAt: '2026-10-01', invoiceNumber: first.invoiceNumber })]);
+    expect(result.billed).toBe(200);
+    expect(result.invoiceCount).toBe(2);
+    expect(result.invoiceRows).toHaveLength(2);
+    expect(result.payments).toBe(25);
+    expect(result.warnings).toEqual([expect.stringContaining('counted only once')]);
+  });
+  it('excludes future-dated cash even from an explicit full-year range', () => {
+    const result = report(
+      [
+        invoice(1, {
+          issuedAt: '2026-10-16',
+          invoicePayments: [payment('2500', '2026-10-16'), payment('7500', '2026-10-21')]
+        })
+      ],
+      localDateRange('2026-01-01', '2026-12-31')
+    );
+    expect(result.payments).toBe(25);
+    expect(result.paymentRows).toHaveLength(1);
+    expect(result.methods[0].amount).toBe(25);
+    expect(result.clients[0].payments).toBe(25);
+    expect(result.trend.reduce((sum, point) => sum + point.payments, 0)).toBe(25);
+    expect(result.warnings).toEqual([expect.stringContaining('future-dated')]);
+  });
+  it('defaults absent legacy optional charges to zero and reconciles the invoice ledger', () => {
+    const result = report([
+      invoice(1, {
+        issuedAt: '2026-10-01',
+        shippingFeeCents: undefined,
+        discountAmountCents: undefined,
+        surchargeAmountCents: undefined
+      })
+    ]);
+    expect(result.billed).toBe(100);
+    expect(result.invoiceRows[0]).toMatchObject({ id: 1, date: '2026-10-01', amount: 100 });
+    expect(result.warnings).toEqual([]);
+  });
+  it('keeps cumulative cents exact, starts at zero for each range, and never mutates bucket data', () => {
+    const points = [
+      { date: '2026-01-01', billed: 0.1, payments: 0.01 },
+      { date: '2026-02-01', billed: 0.2, payments: 0.02 }
+    ];
+    expect(getReportTrend(points, true, 100).at(-1)).toEqual({ date: '2026-02-01', billed: 0.3, payments: 0.03 });
+    expect(getReportTrend(points, true, 100)).toEqual(getReportTrend(points, true, 100));
+    expect(getReportTrend(points.slice(1), true, 100)[0].billed).toBe(0.2);
+    expect(getReportTrend(points, false, 100)).toBe(points);
+    expect(points[1].billed).toBe(0.2);
+  });
   it('uses each payment date, includes old-invoice payments, and excludes manual Paid from cash', () => {
     const result = report([
       invoice(1, {

@@ -104,6 +104,7 @@ If you value **privacy, portability, and control**, this app is built for you.
 - Inclusive local date ranges, currency/client/business filters and daily or monthly invoice/payment trends
 - Client comparisons, payment methods and ledger, settlement status, overdue aging and item sales
 - CSV exports for the selected view; archived invoices included and currencies kept separate
+- Invoice-by-invoice reconciliation of billed totals; current month/quarter/year end today and future payments stay outside received cash until their date
 - Actual payment dates drive cash charts; legacy Paid status settles balances without inventing transactions
 - Client-first bulk payments with an allocation preview, partial payments and one atomic save
 

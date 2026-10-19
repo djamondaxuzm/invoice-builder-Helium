@@ -1,7 +1,46 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-18T19:00:00Z'));
+});
+
+test('This Year reconciles cards, cumulative chart, invoice ledger and CSV without counting future cash or repeated IDs', async ({
+  page
+}) => {
+  await page.goto('/e2e/fixtures/reports.html?mode=audit');
+  await page.getByLabel('Date range', { exact: true }).selectOption('5');
+  await expect(page.getByTestId('report-billed')).toContainText('300.00 USD');
+  await expect(page.getByTestId('report-billed')).toContainText('2 invoices');
+  await expect(page.getByTestId('report-payments')).toContainText('100.00 USD');
+  await expect(page.getByRole('alert').first()).toContainText('future-dated payment');
+  const chart = page.getByTestId('report-trend');
+  await chart.getByRole('switch', { name: 'Cumulative' }).check();
+  await chart.locator('.recharts-line-dots').first().locator('circle').last().hover();
+  await expect(chart.locator('.recharts-tooltip-wrapper')).toContainText('300.00 USD');
+  await page.getByRole('tab', { name: 'Invoices', exact: true }).click();
+  const table = page.getByRole('table', { name: 'Invoices included in total' });
+  await expect(table.getByRole('row')).toHaveCount(3);
+  await expect(table).toContainText('100.00 USD');
+  await expect(table).toContainText('200.00 USD');
+  await expect(table).toContainText('Archived');
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export CSV' }).click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toBe('Helium-invoices-USD-2026-01-01-2026-10-18.csv');
+  const csv = await readFile((await download.path())!, 'utf8');
+  const amounts = csv
+    .split('\r\n')
+    .slice(2)
+    .map(line => Number(line.split(',').at(-1)!.replaceAll('"', '')));
+  expect(amounts).toEqual([100, 200]);
+  expect(amounts.reduce((sum, amount) => sum + amount, 0)).toBe(300);
+  await page.getByLabel('Date range', { exact: true }).selectOption('1');
+  await expect(page.getByTestId('report-billed')).toContainText('200.00 USD');
+  await page.getByLabel('Date range', { exact: true }).selectOption('5');
+  await expect(page.getByTestId('report-billed')).toContainText('300.00 USD');
+  await chart.locator('.recharts-line-dots').first().locator('circle').last().hover();
+  await expect(chart.locator('.recharts-tooltip-wrapper')).toContainText('300.00 USD');
 });
 test('shows the last day, keeps currency on range changes, filters clients, exports and renders narrow screens', async ({
   page
