@@ -2,6 +2,7 @@
 
 New features & improvements
 
+- Refresh the GitHub landing page with Helium branding, prominent Windows/macOS install links, current feature and workflow guides, and new dashboard/billing-period screenshots using fictional data. Clarify release availability, reporting rules and linked catalog updates; remove stale release badges and support claims.
 - Add a dedicated installation guide linked from the README and tutorial, with Windows/macOS build commands, fresh Windows output folders, upgrade steps and troubleshooting.
 - Add a financial dashboard with local date ranges, client/business/currency filters, invoice and actual-payment trends, overdue aging, client comparisons, payment methods/ledger, item sales and CSV export.
 - Add client-first bulk payments with oldest-first allocation, a per-invoice preview, stale-data validation and all-or-nothing persistence.

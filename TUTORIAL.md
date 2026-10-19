@@ -1199,7 +1199,7 @@ Choose **Last 30 days**, a calendar period, or an inclusive custom range. Last 3
 
 An informational message identifies amounts settled using Paid status without matching payment entries. These amounts reduce outstanding balances but never appear as dated cash receipts. Invalid dates or amounts produce warnings where they affect a report.
 
-{IMAGE: financial dashboard with filters, trend, client and payment tabs}
+![Financial dashboard with cumulative trends and invoice reconciliation, using fictional demo data](docs/images/financial-dashboard.png)
 
 ## Record a payment
 
@@ -1219,7 +1219,7 @@ Older Paid invoices remain settled even if payment dates were never entered. Not
 
 The batch supports up to 500 selected invoices. It changes payments and statuses without rewriting receipts, invoice lines or catalog definitions. You can export the same selection as a billing-period PDF after recording the payment.
 
-{IMAGE: client-first selection and bulk payment allocation preview}
+![Client-first invoice selection for billing periods and bulk payments, using fictional demo data](docs/images/billing-period.png)
 
 ## Database and platform compatibility
 
