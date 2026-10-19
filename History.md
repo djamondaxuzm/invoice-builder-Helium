@@ -4,6 +4,18 @@
 
 New features & improvements
 
+- Billing-period export now starts with client selection, displays dated invoice metadata, and supports Ctrl/Cmd-click and Shift-click ranges.
+- Business/client details and catalog item name, unit and price edits propagate to linked invoices and quotes atomically. Archiving catalog entries leaves existing invoice lines and prices intact.
+- Preserve unchanged receipt blobs during invoice saves, avoid binary JSON comparisons and PDF preview remounts, bound image conversion caching, and index invoice associations during list loading.
+
+Bug Fixes
+
+- Reject invalid retained receipt references and roll back the entire invoice save. Keep unsaved-change protection enabled if comparison fails.
+
+## {DATE}, version {VERSION}
+
+New features & improvements
+
 - Added a billing-period PDF action to select saved invoices for one business, client and currency, filter by date, and export daily line items with a combined total, payments and balance.
 
 Bug Fixes

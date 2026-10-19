@@ -55,6 +55,8 @@ describe('consistent date displays', () => {
   ])('uses %s in billing filters, invoice rows and PDF headings', async (dateFormat, first, last) => {
     const configured = { ...settings, dateFormat };
     const dialog = render(<BillingPeriodDialog settings={configured} onClose={vi.fn()} />);
+    await screen.findByText('Example Client');
+    fireEvent.change(screen.getByLabelText('Client'), { target: { value: '2' } });
     await waitFor(() => expect(screen.getByLabelText(new RegExp(first))).toBeTruthy());
     expect(screen.getByLabelText('From date').getAttribute('data-format')).toBe(dateFormat);
     fireEvent.change(screen.getByLabelText('From date'), { target: { value: '2026-09-02' } });

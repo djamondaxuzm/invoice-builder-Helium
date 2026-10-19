@@ -26,6 +26,7 @@ import { getDefaultValue } from '../utils/dbHelper';
 import { generateInvoiceXML } from '../utils/einvoice/xmlProfiles';
 import { mapDatabaseError } from '../utils/errorFunctions';
 import { getWhereClauseFromFilters } from '../utils/filterFunctions';
+import { syncAttachments } from '../utils/syncAttachments';
 
 type GetInvoicesOptions = {
   id?: number;
@@ -706,27 +707,47 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
     invoiceItemIds
   );
 
+  const group = <T extends { parentInvoiceId: number }>(rows: T[]) => {
+    const index = new Map<number, T[]>();
+    for (const row of rows) {
+      const bucket = index.get(row.parentInvoiceId);
+      if (bucket) bucket.push(row);
+      else index.set(row.parentInvoiceId, [row]);
+    }
+    return index;
+  };
+  const paymentsByInvoice = group(invoicePayments);
+  const itemsByInvoice = group(invoiceItems);
+  const attachmentsByInvoice = group(invoiceAttachments);
+  const businessesByInvoice = group(invoiceBusinessSnapshots);
+  const clientsByInvoice = group(invoiceClientSnapshots);
+  const currenciesByInvoice = group(invoiceCurrencySnapshots);
+  const customizationsByInvoice = group(invoiceCustomization);
+  const stylesByInvoice = group(invoiceStyleProfileSnapshots);
+  const banksByInvoice = group(invoiceBankSnapshots);
+  const layoutsByInvoice = group(invoiceLayoutSnapshots);
+  const snapshotsByItem = new Map(invoiceItemSnapshots.map(row => [row.parentInvoiceItemId, row]));
+
   return invoices.map(invoice => {
-    const specificCustomization = invoiceCustomization.find(p => p.parentInvoiceId === invoice.id);
-    const layoutSnapshot = invoiceLayoutSnapshots.find(snapshot => snapshot.parentInvoiceId === invoice.id);
+    const invoiceId = invoice.id!;
+    const specificCustomization = customizationsByInvoice.get(invoiceId)?.[0];
+    const layoutSnapshot = layoutsByInvoice.get(invoiceId)?.[0];
 
     return {
       ...invoice,
-      invoicePayments: invoicePayments.filter(p => p.parentInvoiceId === invoice.id),
-      invoiceItems: invoiceItems
-        .filter(p => p.parentInvoiceId === invoice.id)
-        .map(p => {
-          return {
-            ...p,
-            invoiceItemSnapshot: invoiceItemSnapshots.find(iis => iis.parentInvoiceItemId === p.id),
-            customField: p.customField && typeof p.customField === 'string' ? JSON.parse(p.customField) : p.customField
-          };
-        }),
-      invoiceAttachments: invoiceAttachments.filter(p => p.parentInvoiceId === invoice.id),
-      invoiceBankSnapshot: invoiceBankSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceBusinessSnapshot: invoiceBusinessSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceClientSnapshot: invoiceClientSnapshots.find(p => p.parentInvoiceId === invoice.id),
-      invoiceCurrencySnapshot: invoiceCurrencySnapshots.find(p => p.parentInvoiceId === invoice.id),
+      invoicePayments: paymentsByInvoice.get(invoiceId) ?? [],
+      invoiceItems: (itemsByInvoice.get(invoiceId) ?? []).map(p => {
+        return {
+          ...p,
+          invoiceItemSnapshot: snapshotsByItem.get(p.id),
+          customField: p.customField && typeof p.customField === 'string' ? JSON.parse(p.customField) : p.customField
+        };
+      }),
+      invoiceAttachments: attachmentsByInvoice.get(invoiceId) ?? [],
+      invoiceBankSnapshot: banksByInvoice.get(invoiceId)?.[0],
+      invoiceBusinessSnapshot: businessesByInvoice.get(invoiceId)?.[0],
+      invoiceClientSnapshot: clientsByInvoice.get(invoiceId)?.[0],
+      invoiceCurrencySnapshot: currenciesByInvoice.get(invoiceId)?.[0],
       invoiceCustomization: specificCustomization
         ? {
             ...specificCustomization,
@@ -749,7 +770,7 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
                 : layoutSnapshot.layoutSchema
           }
         : undefined,
-      invoiceStyleProfileSnapshot: invoiceStyleProfileSnapshots.find(p => p.parentInvoiceId === invoice.id)
+      invoiceStyleProfileSnapshot: stylesByInvoice.get(invoiceId)?.[0]
     };
   });
 };
@@ -985,7 +1006,6 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
   const {
     handleInvoice,
     handleInvoicePayments,
-    handleAttachments,
     handleInvoiceBusinessSnapshots,
     handleInvoiceBankSnapshots,
     handleInvoiceStyleProfileSnapshots,
@@ -1151,11 +1171,7 @@ export const updateInvoice = async (db: DatabaseAdapter, data: Invoice) => {
       return { success: false, key: paymentsResult.key, message: paymentsResult.message };
     }
 
-    await db.run('DELETE FROM attachments WHERE "parentInvoiceId" = ?;', [data.id]);
-    const attachmentsResult = await processAttachments(db, { handleAttachments }, data.id, data.invoiceAttachments);
-    if (!attachmentsResult.success) {
-      return { success: false, key: attachmentsResult.key, message: attachmentsResult.message };
-    }
+    await syncAttachments(db, data.id, data.invoiceAttachments ?? []);
 
     const newResult = await getInvoices(db, { id: data.id });
 

@@ -4,6 +4,7 @@ import type { Invoice, InvoiceUpdate } from '../../types/invoice';
 import type { RequestHook } from '../../types/requestHook';
 import type { Response } from '../../types/response';
 import { useAsyncAction } from '../ayncAction/useAsyncAction';
+import { invoiceSavePayload } from '../../utils/invoiceSavePayload';
 
 interface UseInvoiceUpdateParams extends RequestHook<Response<Invoice>> {
   invoice?: InvoiceUpdate;
@@ -12,7 +13,7 @@ interface UseInvoiceUpdateParams extends RequestHook<Response<Invoice>> {
 export const useInvoiceUpdate = ({ invoice, immediate = true, showLoader = true, onDone }: UseInvoiceUpdateParams) => {
   const asyncFn = useCallback(async (): Promise<Response<Invoice>> => {
     if (!invoice) return Promise.resolve({ success: false });
-    return getApi().updateInvoice(invoice);
+    return getApi().updateInvoice(invoiceSavePayload(invoice));
   }, [invoice]);
 
   const { data, loading, execute } = useAsyncAction<Response<Invoice>>(asyncFn, {

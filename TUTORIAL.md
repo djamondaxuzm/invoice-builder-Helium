@@ -6,13 +6,19 @@
 
 1. Save the individual daily invoices as usual.
 2. Open **Invoices → Billing period PDF**.
-3. Optionally enter **From date** and **To date**. Both endpoints are included; changing either clears the current selection.
-4. Select invoices with the same business, client and currency. **Select shown** selects every invoice currently listed; clear any incompatible selections before exporting.
+3. Choose a **Client** first, then optionally enter **From date** and **To date**. Both endpoints are included. Changing the client or dates clears the current selection.
+4. Invoices appear oldest first with their issue date, invoice number, business, currency, status, line-item count and receipt count. Click a row to select only that invoice; **Ctrl-click** (or **Cmd-click**) toggles individual rows, and **Shift-click** selects a range from the last clicked row. **Ctrl+Shift-click** adds a range. Checkboxes toggle without clearing other selections. **Select shown** selects every visible invoice. The selection must still use one business and currency.
 5. Choose **Download PDF**. Each invoice starts on its own page in date order, with item quantities, unit prices, taxes, subtotal and customer notes. Saved PNG/JPEG receipt images follow their invoice. The final summary lists all invoices, charges before tax, tax, total billed, payments and balance due. Paid invoices count as settled; overpayments remain a credit.
 
 For invoices 001–007, select those seven invoices to produce one combined document covering their issue dates. This export leaves the original invoices unchanged and does not allocate another invoice number. Receipt images are supporting documents and never add charges to the total. Unsupported attachment types produce an error instead of being silently omitted. The export does not merge PDF attachments or save a reusable billing-period record. Labels are English; dates use your selected date format.
 
 ### Invoice save and date behavior
+
+Editing a business or client definition updates the corresponding changed contact/logo fields on all linked invoices and quotes. Changing a catalog item's name, unit or price updates those fields on existing invoice lines, including archived invoices. Quantities, payments, custom notes and per-invoice tax rates remain unchanged; tax amounts recalculate from the updated price. The catalog does not have a shared tax-rate setting. A price change applies the catalog amount using each invoice currency's subunit; it does not perform currency conversion.
+
+Archiving a catalog item only removes it from the active catalog: existing invoice lines remain intact. Archiving alone, or editing an unrelated catalog field, preserves invoice-specific prices. Explicit catalog price edits replace those prices on linked invoices. A definition update and its linked snapshot updates are saved atomically. Previously exported PDF files do not change; export again to use the updated definitions.
+
+Saving an invoice retains unchanged receipt images by reference instead of uploading and rewriting them. New receipts still include their image data, and removing a receipt removes it when you save. Dirty checking compares shared image buffers without serializing them. Image conversion caching is weakly referenced and capped at 16 MiB of source image data and 64 entries.
 
 New invoices start with today's local date. Picking a date uses that same local calendar day in the invoice list and PDF; clearing an optional due date removes it from the form. A successful save clears the unsaved-changes warning. A failed save keeps the draft open for correction and retry.
 

@@ -3,6 +3,7 @@ import type { FilterData } from '../types/invoiceFilter';
 import type { Unit } from '../types/unit';
 import { getAllEntities, handleEntity } from '../utils/entitiesFunctions';
 import { mapDatabaseError } from '../utils/errorFunctions';
+import { sameDefinitionValue, updateWithSnapshots } from '../utils/linkedSnapshots';
 
 const unitFields: (keyof Unit)[] = ['name', 'isArchived'];
 
@@ -60,7 +61,21 @@ export const updateUnit = async (db: DatabaseAdapter, data: Unit) => {
           THEN ii."parentInvoiceId" END)
       `
   });
-  return handle(data, true);
+  return updateWithSnapshots(
+    db,
+    'units',
+    data.id,
+    () => handle(data, true),
+    async (before, after) => {
+      if (!sameDefinitionValue(before.name, after.name))
+        await db.run(
+          `UPDATE invoice_item_snapshots SET "unitName" = ?
+      WHERE "parentInvoiceItemId" IN (SELECT ii."id" FROM invoice_items ii
+        JOIN items it ON it."id" = ii."itemId" WHERE it."unitId" = ?)`,
+          [after.name, data.id]
+        );
+    }
+  );
 };
 
 export const deleteUnit = async (db: DatabaseAdapter, id: number) => {

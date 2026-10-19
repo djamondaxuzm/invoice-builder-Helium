@@ -1,17 +1,7 @@
 import { useEffect, useState, type RefObject } from 'react';
 import { useAppDispatch } from '../../../state/configureStore';
 import { setAllowed } from '../../../state/pageSlice';
-
-const stableStringify = (value: unknown): string => {
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.keys(value as Record<string, unknown>)
-      .sort()
-      .map(key => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-};
+import { formEqual } from '../../utils/formEqual';
 
 export const useFormDirtyCheck = <T>(form: T | undefined, initialFormRef: RefObject<T | undefined>) => {
   const dispatch = useAppDispatch();
@@ -25,14 +15,12 @@ export const useFormDirtyCheck = <T>(form: T | undefined, initialFormRef: RefObj
     }
 
     try {
-      const a = stableStringify(initialFormRef.current ?? {});
-      const b = stableStringify(form ?? {});
-      const dirty = a !== b;
+      const dirty = !formEqual(initialFormRef.current, form);
       setIsDirty(dirty);
       dispatch(setAllowed(!dirty));
     } catch {
-      setIsDirty(false);
-      dispatch(setAllowed(true));
+      setIsDirty(true);
+      dispatch(setAllowed(false));
     }
   }, [dispatch, form, initialFormRef]);
 

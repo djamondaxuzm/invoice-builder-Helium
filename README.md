@@ -15,6 +15,8 @@
 
 **Offline invoicing with full data ownership.**
 
+This fork includes client-first combined billing-period PDFs with date-ordered Ctrl/Shift selection, faster image-heavy invoice saves, and automatic propagation of edited business/client details and catalog prices to linked invoices. Archiving catalog items does not remove them from existing invoices. See [the billing-period and editing guide](TUTORIAL.md#export-a-billing-period) for the update rules.
+
 **Invoice Builder** is an **offline-first, open-source invoicing and quoting application** for freelancers and small businesses who want full control over their data.
 
 No accounts. No cloud. No subscriptions.  

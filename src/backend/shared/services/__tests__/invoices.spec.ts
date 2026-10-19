@@ -13,7 +13,14 @@ import type {
   InvoiceClientSnapshots,
   InvoiceCurrencySnapshots
 } from '../../types/invoice';
-import { addInvoice, duplicateInvoice, getNextSequence, updateInvoice } from '../invoices';
+import { addInvoice, duplicateInvoice, getNextSequence, updateInvoice, getAllInvoices } from '../invoices';
+import { updateBusiness } from '../businesses';
+import { updateItem } from '../items';
+import { updateUnit } from '../units';
+import type { Business } from '../../types/business';
+import type { Item } from '../../types/item';
+import type { Unit } from '../../types/unit';
+import { InvoiceItemTaxType } from '../../enums/taxType';
 
 const createTestDatabase = async (): Promise<DatabaseAdapter> => {
   const sqlite = new sqlite3.Database(':memory:');
@@ -132,6 +139,169 @@ const loadNextSequence = async (
   );
   return row?.nextSequence;
 };
+
+describe('receipt persistence and linked definitions', () => {
+  let db: DatabaseAdapter;
+  let businessId: number;
+  let clientId: number;
+  let currencyId: number;
+  beforeEach(async () => {
+    db = await createTestDatabase();
+    businessId = await insertBusiness(db, 'Linked Business', 'LB');
+    clientId = await insertClient(db, 'Linked Client', 'LC');
+    currencyId = await getCurrencyId(db, 'USD');
+  });
+  afterEach(async () => {
+    await db.close();
+  });
+  const add = async (number: string, extras: Partial<Invoice> = {}) => {
+    const result = await addInvoice(db, {
+      ...createInvoicePayload(businessId, clientId, currencyId, number),
+      ...extras
+    });
+    expect(result.success).toBe(true);
+    return result.data as Invoice;
+  };
+
+  it('keeps saved image bytes and IDs without rewriting receipts, and supports removal and addition', async () => {
+    const bytes = new Uint8Array(1024 * 1024).fill(73);
+    const saved = await add('001', {
+      invoiceAttachments: [
+        {
+          fileName: 'receipt.png',
+          fileType: 'image/png',
+          fileSize: bytes.length,
+          data: bytes
+        } as Invoice['invoiceAttachments'][number]
+      ]
+    });
+    const original = saved.invoiceAttachments[0];
+    await db.run(
+      `CREATE TRIGGER no_receipt_update BEFORE UPDATE ON attachments BEGIN SELECT RAISE(ABORT, 'receipt rewritten'); END;`
+    );
+    await db.run(
+      `CREATE TRIGGER no_receipt_delete BEFORE DELETE ON attachments BEGIN SELECT RAISE(ABORT, 'receipt deleted'); END;`
+    );
+    const result = await updateInvoice(db, {
+      ...saved,
+      customerNotes: 'Only notes changed',
+      invoiceAttachments: [{ ...original, retainExistingData: true, data: new Uint8Array() }]
+    });
+    expect(result.success).toBe(true);
+    const returned = result.data as Invoice;
+    expect(returned.invoiceAttachments[0].id).toBe(original.id);
+    expect(Buffer.from(returned.invoiceAttachments[0].data).equals(Buffer.from(bytes))).toBe(true);
+    await db.run('DROP TRIGGER no_receipt_delete');
+    const replaced = await updateInvoice(db, {
+      ...returned,
+      invoiceAttachments: [{ ...original, id: 999999, data: new Uint8Array([1, 2]), fileSize: 2, fileName: 'new.png' }]
+    });
+    expect(replaced.success).toBe(true);
+    expect((replaced.data as Invoice).invoiceAttachments).toHaveLength(1);
+    expect(Array.from((replaced.data as Invoice).invoiceAttachments[0].data)).toEqual([1, 2]);
+    expect((await updateInvoice(db, { ...(replaced.data as Invoice), invoiceAttachments: [] })).success).toBe(true);
+    expect(await db.all('SELECT id FROM attachments')).toHaveLength(0);
+  });
+
+  it('rejects receipt references from another invoice and rolls back all edits', async () => {
+    const first = await add('001', {
+      invoiceAttachments: [
+        {
+          fileName: 'a.png',
+          fileType: 'image/png',
+          fileSize: 1,
+          data: new Uint8Array([9])
+        } as Invoice['invoiceAttachments'][number]
+      ]
+    });
+    const second = await add('002');
+    const result = await updateInvoice(db, {
+      ...second,
+      customerNotes: 'Must roll back',
+      invoiceAttachments: [{ ...first.invoiceAttachments[0], retainExistingData: true, data: new Uint8Array() }]
+    });
+    expect(result.success).toBe(false);
+    expect((await db.get<Invoice>('SELECT * FROM invoices WHERE id = ?', [second.id]))?.customerNotes).toBeNull();
+    expect(await db.all('SELECT id FROM attachments')).toHaveLength(1);
+  });
+
+  it('updates business branding on every linked invoice and quote, including clearing a logo', async () => {
+    await add('001');
+    await add('002', { invoiceType: InvoiceType.quotation });
+    const business = (await db.get<Business>('SELECT * FROM businesses WHERE id = ?', [businessId]))!;
+    expect(
+      (
+        await updateBusiness(db, {
+          ...business,
+          logo: new Uint8Array([3, 4]),
+          fileSize: 2,
+          fileType: 'image/png',
+          name: 'New name'
+        })
+      ).success
+    ).toBe(true);
+    const invoices = (await getAllInvoices(db)).data!;
+    expect(invoices).toHaveLength(2);
+    for (const invoice of invoices) {
+      expect(invoice.invoiceBusinessSnapshot?.businessName).toBe('New name');
+      expect(Array.from(invoice.invoiceBusinessSnapshot!.businessLogo!)).toEqual([3, 4]);
+    }
+    const current = (await db.get<Business>('SELECT * FROM businesses WHERE id = ?', [businessId]))!;
+    expect(
+      (await updateBusiness(db, { ...current, logo: undefined, fileType: undefined, fileSize: undefined })).success
+    ).toBe(true);
+    for (const invoice of (await getAllInvoices(db)).data!)
+      expect(invoice.invoiceBusinessSnapshot?.businessLogo).toBeNull();
+  });
+
+  it('rolls back the master definition if snapshot synchronization fails', async () => {
+    await add('001');
+    const business = (await db.get<Business>('SELECT * FROM businesses WHERE id = ?', [businessId]))!;
+    await db.run(
+      `CREATE TRIGGER fail_branding BEFORE UPDATE ON invoice_business_snapshots BEGIN SELECT RAISE(ABORT, 'failed branding'); END;`
+    );
+    expect((await updateBusiness(db, { ...business, name: 'Not saved' })).success).toBe(false);
+    expect((await db.get<Business>('SELECT * FROM businesses WHERE id = ?', [businessId]))?.name).toBe(business.name);
+  });
+
+  it('archiving preserves invoice lines and custom prices; explicit price and unit edits propagate', async () => {
+    const unitId = await db.run('INSERT INTO units (name) VALUES (?)', ['Hour'], true);
+    const itemId = await db.run(
+      'INSERT INTO items (name, amount, "unitId") VALUES (?, ?, ?)',
+      ['Labor', '85', unitId],
+      true
+    );
+    const invoice = await add('001', {
+      invoiceItems: [
+        {
+          itemId,
+          quantity: '2',
+          taxRate: 10,
+          taxType: InvoiceItemTaxType.exclusive,
+          invoiceItemSnapshot: { itemName: 'Labor', unitName: 'Hour', unitPriceCents: '9000', parentInvoiceItemId: 0 }
+        } as Invoice['invoiceItems'][number]
+      ]
+    });
+    const item = (await db.get<Item>('SELECT * FROM items WHERE id = ?', [itemId]))!;
+    expect((await updateItem(db, { ...item, isArchived: true })).success).toBe(true);
+    const archived = (await getAllInvoices(db)).data![0];
+    expect(archived.invoiceItems).toHaveLength(1);
+    expect(archived.invoiceItems[0].invoiceItemSnapshot?.unitPriceCents).toBe('9000');
+    expect(archived.invoiceItems[0].quantity).toBe('2');
+    expect(archived.invoiceItems[0].taxRate).toBe(10);
+    expect((await updateItem(db, { ...item, isArchived: true, amount: '100', name: 'Updated labor' })).success).toBe(
+      true
+    );
+    const updated = (await getAllInvoices(db)).data![0];
+    expect(updated.id).toBe(invoice.id);
+    expect(Number(updated.invoiceItems[0].invoiceItemSnapshot?.unitPriceCents)).toBe(10000);
+    expect(updated.invoiceItems[0].invoiceItemSnapshot?.itemName).toBe('Updated labor');
+    expect(updated.invoiceItems[0].taxRate).toBe(10);
+    const unit = (await db.get<Unit>('SELECT * FROM units WHERE id = ?', [unitId]))!;
+    expect((await updateUnit(db, { ...unit, name: 'Hours' })).success).toBe(true);
+    expect((await getAllInvoices(db)).data![0].invoiceItems[0].invoiceItemSnapshot?.unitName).toBe('Hours');
+  });
+});
 
 describe('invoice sequence handling', () => {
   let db: DatabaseAdapter;

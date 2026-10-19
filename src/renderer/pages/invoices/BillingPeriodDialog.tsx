@@ -8,11 +8,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
+  ListItemButton,
+  TextField,
   Stack,
   Typography
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
+import { selectBillingRows } from '../../shared/utils/billingSelection';
 import { saveAs } from 'file-saver';
 import { Datepicker } from '../../shared/components/inputs/datepicker/Datepicker';
 import { formatDate } from '../../shared/utils/formatFunctions';
@@ -25,6 +27,8 @@ import { billingDate, billingSelectionError, buildBillingPeriod } from '../../sh
 export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void; settings: Settings }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
+  const [clientId, setClientId] = useState('');
+  const [anchor, setAnchor] = useState<number>();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [loading, setLoading] = useState(true);
@@ -53,17 +57,32 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
     () => invoices.map(invoice => ({ invoice, date: billingDate(invoice.issuedAt) })),
     [invoices]
   );
+  const clients = useMemo(
+    () =>
+      [
+        ...new Map(
+          invoices.map(invoice => [
+            invoice.clientId,
+            { id: invoice.clientId, name: invoice.invoiceClientSnapshot?.clientName || `Client ${invoice.clientId}` }
+          ])
+        ).values()
+      ].sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id),
+    [invoices]
+  );
   const visible = useMemo(
     () =>
       datedInvoices
-        .filter(({ date }) => date && (!from || date >= from) && (!to || date <= to))
+        .filter(
+          ({ invoice, date }) =>
+            String(invoice.clientId) === clientId && date && (!from || date >= from) && (!to || date <= to)
+        )
         .sort(
           (a, b) =>
             a.date.localeCompare(b.date) ||
             a.invoice.invoiceNumber.localeCompare(b.invoice.invoiceNumber, undefined, { numeric: true })
         )
         .map(({ invoice }) => invoice),
-    [datedInvoices, from, to]
+    [datedInvoices, from, to, clientId]
   );
   const selectedIds = useMemo(() => new Set(selected), [selected]);
   const chosen = useMemo(() => invoices.filter(invoice => selectedIds.has(invoice.id!)), [invoices, selectedIds]);
@@ -89,38 +108,70 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
       <DialogTitle>Billing period PDF</DialogTitle>
       <DialogContent>
         <Typography sx={{ mb: 2 }}>
-          Select invoices for one business, client, and currency. Each invoice starts on its own page, followed by its
-          receipt attachments. A final summary lists all subtotals and the combined balance due. Each invoice keeps its
-          saved branding; the first invoice supplies the summary branding.
+          Choose a client, then select their invoices in date order. Click a row to select it, Ctrl-click (or Cmd-click)
+          to toggle individual rows, and Shift-click to select a range. Checkboxes also toggle individual invoices. The
+          PDF includes each invoice, its receipts, and a final combined summary.
         </Typography>
+        <TextField
+          select
+          fullWidth
+          label="Client"
+          value={clientId}
+          disabled={loading || exporting}
+          slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+          onChange={event => {
+            setClientId(event.target.value);
+            setSelected([]);
+            setAnchor(undefined);
+            setError('');
+          }}
+        >
+          <option value="">Choose a client…</option>
+          {clients.map(client => (
+            <option key={client.id} value={client.id}>
+              {client.name}
+            </option>
+          ))}
+        </TextField>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1, mb: 2 }}>
           <Datepicker
             label="From date"
             format={settings.dateFormat}
             value={from}
-            disabled={exporting}
+            disabled={exporting || !clientId}
             onChange={value => {
               setFrom(value ? billingDate(value) : '');
               setSelected([]);
+              setAnchor(undefined);
             }}
           />
           <Datepicker
             label="To date"
             format={settings.dateFormat}
             value={to}
-            disabled={exporting}
+            disabled={exporting || !clientId}
             onChange={value => {
               setTo(value ? billingDate(value) : '');
               setSelected([]);
+              setAnchor(undefined);
             }}
           />
           <Button
             disabled={exporting || !visible.length}
-            onClick={() => setSelected(visible.map(invoice => invoice.id!))}
+            onClick={() => {
+              setSelected(visible.map(invoice => invoice.id!));
+              setAnchor(undefined);
+            }}
           >
             Select shown
           </Button>
-          <Button disabled={exporting || !selected.length} onClick={() => setSelected([])}>
+          <Button
+            disabled={exporting || !selected.length}
+            onClick={() => {
+              setSelected([]);
+              setAnchor(undefined);
+            }}
+          >
             Clear selection
           </Button>
         </Stack>
@@ -132,25 +183,63 @@ export const BillingPeriodDialog = ({ onClose, settings }: { onClose: () => void
         {loading ? (
           <CircularProgress aria-label="Loading invoices" />
         ) : (
-          <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
-            {!visible.length && <Typography>No invoices in this date range.</Typography>}
+          <Box
+            role="listbox"
+            aria-label="Invoices by date"
+            aria-multiselectable="true"
+            sx={{ maxHeight: 420, overflowY: 'auto' }}
+          >
+            {!visible.length && (
+              <Typography>
+                {clientId ? 'No invoices in this date range.' : 'Choose a client to see their invoices.'}
+              </Typography>
+            )}
             {visible.map(invoice => (
-              <FormControlLabel
+              <ListItemButton
                 key={invoice.id}
-                sx={{ display: 'flex', m: 0 }}
-                control={
-                  <Checkbox
-                    disabled={exporting}
-                    checked={selectedIds.has(invoice.id!)}
-                    onChange={(_, checked) =>
-                      setSelected(current =>
-                        checked ? [...current, invoice.id!] : current.filter(id => id !== invoice.id)
-                      )
+                role="option"
+                aria-selected={selectedIds.has(invoice.id!)}
+                selected={selectedIds.has(invoice.id!)}
+                disabled={exporting}
+                sx={{ display: 'flex', m: 0, borderBottom: 1, borderColor: 'divider', userSelect: 'none' }}
+                onClick={event => {
+                  const checkbox =
+                    (event.target as HTMLElement).closest('input[type="checkbox"], .MuiCheckbox-root') !== null;
+                  setSelected(current =>
+                    selectBillingRows(
+                      visible.map(row => row.id!),
+                      current,
+                      invoice.id!,
+                      anchor,
+                      { shiftKey: event.shiftKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey, checkbox }
+                    )
+                  );
+                  if (!event.shiftKey || anchor === undefined) setAnchor(invoice.id!);
+                }}
+              >
+                <Checkbox
+                  disabled={exporting}
+                  checked={selectedIds.has(invoice.id!)}
+                  tabIndex={-1}
+                  slotProps={{
+                    input: {
+                      readOnly: true,
+                      'aria-label': `${formatDate(invoice.issuedAt, settings.dateFormat)} · ${invoice.invoiceFullNumber || invoice.invoiceNumber}`
                     }
-                  />
-                }
-                label={`${formatDate(invoice.issuedAt, settings.dateFormat)} · ${invoice.invoiceFullNumber || invoice.invoiceNumber} · ${invoice.invoiceBusinessSnapshot?.businessName ?? ''} · ${invoice.invoiceClientSnapshot?.clientName ?? ''} · ${invoice.invoiceCurrencySnapshot?.currencyCode ?? ''}`}
-              />
+                  }}
+                />
+                <Box>
+                  <Typography sx={{ fontWeight: 600 }}>
+                    {formatDate(invoice.issuedAt, settings.dateFormat)} · Invoice{' '}
+                    {invoice.invoiceFullNumber || invoice.invoiceNumber}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {invoice.invoiceBusinessSnapshot?.businessName} · {invoice.invoiceCurrencySnapshot?.currencyCode} ·{' '}
+                    {invoice.status} · {invoice.invoiceItems.length} line items · {invoice.invoiceAttachments.length}{' '}
+                    receipts
+                  </Typography>
+                </Box>
+              </ListItemButton>
             ))}
           </Box>
         )}

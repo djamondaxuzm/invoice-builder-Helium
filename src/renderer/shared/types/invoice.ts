@@ -279,6 +279,7 @@ export interface InvoicePayment {
 }
 
 export interface InvoiceAttachmentMeta {
+  retainExistingData?: boolean;
   id?: number;
   parentInvoiceId?: number;
   fileSize: number;

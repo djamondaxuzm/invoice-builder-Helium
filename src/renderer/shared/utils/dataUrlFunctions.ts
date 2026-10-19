@@ -1,11 +1,24 @@
 import type { TFunction } from 'i18next';
 
+// Image data is immutable in forms. Weak keys let closed invoices be collected.
+const imageUrls = new WeakMap<Blob | Uint8Array, Map<string, Promise<string>>>();
+const cacheOrder: { input: WeakRef<Blob | Uint8Array>; mime: string; bytes: number }[] = [];
+const maxCachedBytes = 16 * 1024 * 1024;
+let cachedBytes = 0;
+
 export const toDataUrl = (input: Blob | Uint8Array, mimeType: string = 'image/png'): Promise<string> => {
   mimeType = mimeType ?? 'image/png';
+  let cached = imageUrls.get(input);
+  if (!cached) {
+    cached = new Map();
+    imageUrls.set(input, cached);
+  }
+  const existing = cached.get(mimeType);
+  if (existing) return existing;
 
   const blob = input instanceof Blob ? input : new Blob([new Uint8Array(input).buffer], { type: mimeType });
 
-  return new Promise((resolve, reject) => {
+  const result = new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === 'string') resolve(reader.result);
@@ -14,6 +27,20 @@ export const toDataUrl = (input: Blob | Uint8Array, mimeType: string = 'image/pn
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+  const bytes = input instanceof Blob ? input.size : input.byteLength;
+  if (bytes <= maxCachedBytes) {
+    cached.set(mimeType, result);
+    cacheOrder.push({ input: new WeakRef(input), mime: mimeType, bytes });
+    cachedBytes += bytes;
+    while (cachedBytes > maxCachedBytes || cacheOrder.length > 64) {
+      const oldest = cacheOrder.shift()!;
+      cachedBytes -= oldest.bytes;
+      const key = oldest.input.deref();
+      if (key) imageUrls.get(key)?.delete(oldest.mime);
+    }
+  }
+  void result.catch(() => cached.delete(mimeType));
+  return result;
 };
 
 export const isDataUrl = (value: unknown): value is string => {

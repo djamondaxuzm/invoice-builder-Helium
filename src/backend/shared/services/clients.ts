@@ -5,6 +5,7 @@ import type { FilterData } from '../types/invoiceFilter';
 import type { Response } from '../types/response';
 import { getAllEntities, handleEntity } from '../utils/entitiesFunctions';
 import { mapDatabaseError } from '../utils/errorFunctions';
+import { syncContactSnapshot, updateWithSnapshots } from '../utils/linkedSnapshots';
 
 const clientFields: (keyof Client)[] = [
   'name',
@@ -70,7 +71,21 @@ export const updateClient = async (db: DatabaseAdapter, data: Client): Promise<R
            THEN i."id" END)
        `
   });
-  return handle(data, true);
+  return updateWithSnapshots(
+    db,
+    'clients',
+    data.id,
+    () => handle(data, true),
+    (before, after) =>
+      syncContactSnapshot(
+        db,
+        'client',
+        data.id,
+        before,
+        after,
+        clientFields.filter(field => !['shortName', 'description', 'isArchived'].includes(field))
+      )
+  );
 };
 
 export const deleteClient = async (db: DatabaseAdapter, id: number) => {

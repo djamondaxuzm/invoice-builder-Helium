@@ -41,6 +41,25 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
     };
   }, [invoiceForm, pdfTextsDefaults]);
 
+  const imageForm = useMemo(
+    () => ({
+      invoiceBusinessSnapshot: invoiceForm?.invoiceBusinessSnapshot,
+      invoiceCustomization: invoiceForm?.invoiceCustomization,
+      invoiceAttachments: invoiceForm?.invoiceAttachments,
+      invoiceBankSnapshot: invoiceForm?.invoiceBankSnapshot,
+      signatureData: invoiceForm?.signatureData,
+      signatureType: invoiceForm?.signatureType
+    }),
+    [
+      invoiceForm?.invoiceBusinessSnapshot,
+      invoiceForm?.invoiceCustomization,
+      invoiceForm?.invoiceAttachments,
+      invoiceForm?.invoiceBankSnapshot,
+      invoiceForm?.signatureData,
+      invoiceForm?.signatureType
+    ]
+  );
+
   useEffect(() => {
     let cancelled = false;
     setAttachmentUrls([]);
@@ -52,12 +71,12 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
 
     const loadData = async () => {
       const [logo, watermark, watermarkPaid, attachments, signature, qrCode] = await Promise.all([
-        getLogoUrl(invoiceForm),
-        getWatermarkUrl(invoiceForm),
-        getWatermarkPaidUrl(invoiceForm),
-        getAttachmentsUrl(invoiceForm),
-        getSignatureUrls(invoiceForm),
-        getQRCodeUrls(invoiceForm)
+        getLogoUrl(imageForm),
+        getWatermarkUrl(imageForm),
+        getWatermarkPaidUrl(imageForm),
+        getAttachmentsUrl(imageForm),
+        getSignatureUrls(imageForm),
+        getQRCodeUrls(imageForm)
       ]);
 
       if (!cancelled) {
@@ -76,13 +95,13 @@ const PreviewCoreComponent: FC<Props> = ({ invoiceForm }) => {
     return () => {
       cancelled = true;
     };
-  }, [invoiceForm]);
+  }, [imageForm]);
 
   if (loading) return null;
 
   return (
     <PDFViewer
-      key={JSON.stringify(invoiceForm)}
+      key={invoiceForm?.id ?? 'new'}
       style={{ width: '100%', height: '100%', border: 'none' }}
       showToolbar={false}
     >
