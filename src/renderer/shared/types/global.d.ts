@@ -1,4 +1,4 @@
-import type { EInvoice } from '../renderer/shared/enums/einvoice';
+import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAllocation';
 import type { Settings, SettingsUpdate } from '../types/settings';
 import type { DatabaseType } from './../enums/databaseType';
 import type { DBInitType } from './../enums/dbInitType';
@@ -103,7 +103,7 @@ declare global {
         clientId: number;
         invoiceType: InvoiceType;
       }) => Promise<Response<NextSequenceData | undefined>>;
-      getEInvoiceXML: (data: { invoiceId: number; einvoice: EInvoice }) => Promise<Response<Uint8Array | undefined>>;
+
       getCustomHeaders: (type: InvoiceType) => Promise<Response<CustomFieldMeta[]>>;
       getAllInvoices: (
         type?: InvoiceType,
@@ -112,6 +112,7 @@ declare global {
       ) => Promise<Response<Invoice[]>>;
       deleteInvoice: (id: number) => Promise<Response<unknown>>;
       addInvoice: (data: InvoiceAdd) => Promise<Response<Invoice>>;
+      recordBulkPayment: (data: BulkPaymentRequest) => Promise<Response<{ invoiceIds: number[] }>>;
       updateInvoice: (data: InvoiceUpdate) => Promise<Response<Invoice>>;
       duplicateInvoice: (id: number, invoiceType: InvoiceType) => Promise<Response<Invoice>>;
 

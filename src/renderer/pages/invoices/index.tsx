@@ -33,6 +33,7 @@ interface Props {
 }
 export const InvoicesPage: FC<Props> = ({ type }) => {
   const [billingPeriodOpen, setBillingPeriodOpen] = useState(false);
+  const [paymentRevision, setPaymentRevision] = useState(0);
   const { t } = useTranslation();
   const clientsOptions = useAppSelector(selectClientsSnapshotsOptions);
   const businessesOptions = useAppSelector(selectBusinessesSnapshotsOptions);
@@ -231,14 +232,19 @@ export const InvoicesPage: FC<Props> = ({ type }) => {
   return (
     <>
       {billingPeriodOpen && settings && (
-        <BillingPeriodDialog settings={settings} onClose={() => setBillingPeriodOpen(false)} />
+        <BillingPeriodDialog
+          settings={settings}
+          onClose={() => setBillingPeriodOpen(false)}
+          onPaymentsSaved={() => setPaymentRevision(value => value + 1)}
+        />
       )}
       <CRUDPage<Invoice, InvoiceAdd, InvoiceUpdate>
+        key={paymentRevision}
         componentId="invoices"
         listActions={
           type === InvoiceType.invoice ? (
             <Button variant="outlined" disabled={!settings} onClick={() => setBillingPeriodOpen(true)}>
-              Billing period PDF
+              Billing period / payments
             </Button>
           ) : undefined
         }

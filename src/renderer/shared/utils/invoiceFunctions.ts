@@ -1,10 +1,10 @@
+import { calcTax, calcDiscount, calcSurcharge, getInvoiceTotal } from '../../../backend/shared/utils/invoiceMath';
+export { calcTax, calcDiscount, calcSurcharge, getInvoiceTotal } from '../../../backend/shared/utils/invoiceMath';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import type { CurrencyFormat } from '../enums/currencyFormat';
 import { DiscountType } from '../enums/discountType';
-import { InvoiceStatus } from '../enums/invoiceStatus';
-import { ReportDateType } from '../enums/reportDateType';
 import { InvoiceItemTaxType, InvoiceTaxType } from '../enums/taxType';
-import type { Invoice, InvoiceItem, InvoicePayment, InvoicesByCurrency } from '../types/invoice';
+import type { InvoiceItem, InvoicePayment } from '../types/invoice';
 import type { Settings } from '../types/settings';
 import { formatAmount, getFormattedCurrency } from './formatFunctions';
 
@@ -28,46 +28,6 @@ export const calcUnitPrice = (data: { supportsSubunit?: boolean; amountCents: nu
   const unitPrice = supportsSubunit ? amountCents / subunit! : amountCents;
 
   return unitPrice;
-};
-
-export const calcTax = (amount: number, taxRate: number, taxType?: InvoiceItemTaxType | InvoiceTaxType) => {
-  if (!taxType) return 0;
-  switch (taxType) {
-    case InvoiceItemTaxType.exclusive:
-    case InvoiceTaxType.exclusive:
-      return (amount * taxRate) / 100;
-    case InvoiceItemTaxType.inclusive:
-    case InvoiceTaxType.inclusive:
-      return (amount * taxRate) / (100 + taxRate);
-    case InvoiceTaxType.deducted:
-      return -(amount * taxRate) / 100;
-    default:
-      return 0;
-  }
-};
-
-export const calcSurcharge = (data: {
-  subTotal: number;
-  surchargeType?: DiscountType;
-  surchargeAmount?: number;
-  surchargePercent?: number;
-}) => {
-  const { subTotal, surchargeType, surchargeAmount, surchargePercent } = data;
-
-  if (!surchargeType) return 0;
-  return surchargeType === DiscountType.fixed ? (surchargeAmount ?? 0) : (subTotal * (surchargePercent ?? 0)) / 100;
-};
-
-export const calcDiscount = (data: {
-  subTotal: number;
-  discountType?: DiscountType;
-  discountAmount?: number;
-  discountPercent?: number;
-}) => {
-  const { subTotal, discountType, discountAmount, discountPercent } = data;
-
-  if (!discountType) return 0;
-  return discountType === DiscountType.fixed ? (discountAmount ?? 0) : (subTotal * (discountPercent ?? 0)) / 100;
 };
 
 export const getInvoiceItemLevelTaxDiscount = (data: {
@@ -110,6 +70,7 @@ export const getInvoiceItemLevelTaxDiscount = (data: {
 };
 
 export const getInvoiceItemTotal = (data: {
+  subTotal?: number;
   taxRate: number;
   unitPrice: number;
   quantity: number;
@@ -134,9 +95,11 @@ export const getInvoiceItemTotal = (data: {
   const unitTotal = unitPrice * quantity;
   let discount = 0;
   const subTotal =
+    data.subTotal ??
     invoiceItems.reduce((sum, item) => {
       return sum + Number(item.invoiceItemSnapshot.unitPriceCents) * Number(item.quantity);
-    }, 0) ?? 0;
+    }, 0) ??
+    0;
 
   const totalDiscount = calcDiscount({ subTotal, discountType, discountAmount, discountPercent });
 
@@ -148,65 +111,6 @@ export const getInvoiceItemTotal = (data: {
   const tax = includeTax ? calcTax(taxableAmount, taxRate, taxType) : 0;
 
   return taxType === InvoiceItemTaxType.inclusive ? unitTotal - discount : unitTotal - discount + tax;
-};
-
-export const getInvoiceTotal = (data: {
-  taxRate: number;
-  taxType?: InvoiceTaxType;
-  invoiceItems: InvoiceItem[];
-  discountType?: DiscountType;
-  discountAmount?: number;
-  discountPercent?: number;
-  shippingFee?: number;
-  surchargeType?: DiscountType;
-  surchargeAmount?: number;
-  surchargePercent?: number;
-  includeTax?: boolean;
-}) => {
-  const {
-    taxRate,
-    taxType,
-    invoiceItems,
-    discountType,
-    discountAmount = 0,
-    discountPercent = 0,
-    shippingFee = 0,
-    surchargeAmount = 0,
-    surchargeType,
-    surchargePercent,
-    includeTax = true
-  } = data;
-
-  const subTotal =
-    invoiceItems.reduce((sum, item) => {
-      return sum + Number(item.invoiceItemSnapshot.unitPriceCents) * Number(item.quantity);
-    }, 0) ?? 0;
-
-  const totalDiscount = calcDiscount({ subTotal, discountType, discountAmount, discountPercent });
-  const afterDiscount = subTotal - totalDiscount;
-  const totalSurcharge = calcSurcharge({
-    subTotal: afterDiscount,
-    surchargeType,
-    surchargeAmount,
-    surchargePercent
-  });
-
-  const taxInvoice = calcTax(afterDiscount, taxRate, taxType);
-  let taxItems = 0;
-  invoiceItems.map(item => {
-    const unitTotal = Number(item.invoiceItemSnapshot.unitPriceCents) * Number(item.quantity);
-    let discount = 0;
-    if (subTotal > 0 && totalDiscount > 0) {
-      discount = Math.round((unitTotal / subTotal) * totalDiscount);
-    }
-    const taxableAmount = unitTotal - discount;
-    if (item.taxType !== InvoiceItemTaxType.inclusive) taxItems += calcTax(taxableAmount, item.taxRate, item.taxType);
-  });
-  const tax = includeTax ? taxInvoice + taxItems : 0;
-
-  return taxType === InvoiceTaxType.inclusive
-    ? afterDiscount + shippingFee + totalSurcharge
-    : afterDiscount + tax + shippingFee + totalSurcharge;
 };
 
 export const getPaidAmount = (invoicePayments: InvoicePayment[]) => {
@@ -256,94 +160,6 @@ export const getBalanceDue = (data: {
   return balanceAmount;
 };
 
-export const aggregateInvoicesByCurrency = (
-  invoices: Invoice[],
-  from: string,
-  to: string,
-  reportDateType: ReportDateType
-): InvoicesByCurrency => {
-  const fromDate = parseISO(from);
-  const toDate = parseISO(to);
-
-  const filtered = invoices.filter(inv => {
-    const issueDate = parseISO(inv.issuedAt);
-    let paidAtDate: Date | undefined = undefined;
-
-    if (inv.paidAt) {
-      paidAtDate = parseISO(inv.paidAt);
-    }
-
-    if (reportDateType === ReportDateType.issuedAt) {
-      return issueDate >= fromDate && issueDate <= toDate;
-    }
-
-    if (!paidAtDate) return false;
-
-    return paidAtDate >= fromDate && paidAtDate <= toDate;
-  });
-
-  const getInvoicePaidAmount = (invoice: Invoice, totalAmountCents: number) => {
-    const amountPaidCents = getPaidAmount(invoice.invoicePayments);
-
-    if (invoice.status === InvoiceStatus.paid && amountPaidCents <= totalAmountCents) {
-      return totalAmountCents / invoice.invoiceCurrencySnapshot!.currencySubunit;
-    }
-
-    return amountPaidCents / invoice.invoiceCurrencySnapshot!.currencySubunit;
-  };
-
-  const result: InvoicesByCurrency = {};
-
-  filtered.forEach(invoice => {
-    const code = invoice.invoiceCurrencySnapshot!.currencyCode;
-    if (!result[code]) {
-      result[code] = {
-        currencyCode: code,
-        currencySymbol: invoice.invoiceCurrencySnapshot!.currencySymbol,
-        totalAmount: 0,
-        totalAmountPaid: 0,
-        balanceDue: 0,
-        invoiceCount: 0,
-        overdueCount: 0,
-        collectionRate: 0,
-        avgPerInvoice: 0,
-        issuedAt: invoice.issuedAt,
-        currencyId: invoice.currencyId,
-        paidAt: invoice.paidAt
-      };
-    }
-    const daysLeft = getDaysLeft(invoice.dueDate);
-    const totalAmountCents = getInvoiceTotal({
-      taxRate: invoice.taxRate,
-      taxType: invoice.taxType,
-      invoiceItems: invoice.invoiceItems,
-      discountType: invoice.discountType,
-      discountAmount: Number(invoice.discountAmountCents),
-      discountPercent: invoice.discountPercent,
-      surchargeType: invoice.surchargeType,
-      surchargeAmount: Number(invoice.surchargeAmountCents),
-      surchargePercent: invoice.surchargePercent,
-      shippingFee: Number(invoice.shippingFeeCents)
-    });
-    const totalAmountPaid = getInvoicePaidAmount(invoice, totalAmountCents);
-    const totalAmount = totalAmountCents / invoice.invoiceCurrencySnapshot!.currencySubunit;
-    const remaining = totalAmount - totalAmountPaid;
-
-    result[code].totalAmount += totalAmount;
-    result[code].totalAmountPaid += totalAmountPaid;
-    result[code].balanceDue += remaining;
-    result[code].invoiceCount += 1;
-    result[code].overdueCount += daysLeft < 0 ? 1 : 0;
-  });
-
-  Object.values(result).forEach(group => {
-    group.collectionRate = group.totalAmount ? (group.totalAmountPaid / group.totalAmount) * 100 : 0;
-    group.avgPerInvoice = group.invoiceCount ? group.totalAmountPaid / group.invoiceCount : 0;
-  });
-
-  return result;
-};
-
 export const createCurrencyFormatter = (data: {
   storeSettings?: Settings;
   currencySymbol?: string;
@@ -364,7 +180,7 @@ export const createCurrencyFormatter = (data: {
           symbol: currencySymbol!,
           code: currencyCode!
         })
-      : formatAmount(amount, storeSettings!.amountFormat);
+      : formatAmount(amount, storeSettings?.amountFormat);
 };
 
 export const supportsCurrencySubunit = (data: {
@@ -473,7 +289,6 @@ export const getFinancialData = (data: {
     currencyFormat
   });
 
-  let isInclusive = false;
   let subTotalAmount = 0;
   let totalItemTaxAmount = 0;
   invoiceItems?.forEach(item => {
@@ -498,14 +313,7 @@ export const getFinancialData = (data: {
 
     totalItemTaxAmount += itemLevelTax;
     subTotalAmount += subTotal;
-
-    if (item.taxType === InvoiceItemTaxType.inclusive) {
-      isInclusive = true;
-    }
   });
-  if (!isInclusive && taxType === InvoiceTaxType.inclusive) {
-    isInclusive = true;
-  }
 
   const calculatedDiscountAmount = calcDiscount({
     subTotal: subTotalAmount,
@@ -524,11 +332,20 @@ export const getFinancialData = (data: {
 
   const invoiceLevelTax = calcTax(totalAmountAfterDiscount, taxRate, taxType);
   const taxTotalAmount = totalItemTaxAmount + invoiceLevelTax;
-  let totalAmount = totalAmountAfterDiscount + shippingAmount + calculatedSurchargeAmount;
-
-  if (!isInclusive) {
-    totalAmount += taxTotalAmount;
-  }
+  // Use the same total as invoice lists and reports. Inclusive tax on one line
+  // must not suppress exclusive tax on a different line.
+  const totalAmount = getInvoiceTotal({
+    invoiceItems,
+    taxRate,
+    taxType,
+    discountType,
+    discountAmount,
+    discountPercent,
+    shippingFee: shippingAmount,
+    surchargeType,
+    surchargeAmount,
+    surchargePercent
+  });
   const paidAmount = getPaidAmount(invoicePayments);
   const balanceDue = totalAmount - paidAmount;
 

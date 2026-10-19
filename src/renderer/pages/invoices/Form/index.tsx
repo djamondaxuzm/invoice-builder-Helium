@@ -1,16 +1,11 @@
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { Box, Divider, Fab, Tooltip } from '@mui/material';
-import { memo, useCallback, useEffect, useMemo, useState, useTransition, type FC } from 'react';
+import { memo, useCallback, useMemo, useState, useTransition, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from '../../../i18n';
-import { EInvoice } from '../../../shared/enums/einvoice';
 import { InvoiceStatus } from '../../../shared/enums/invoiceStatus';
 import { InvoiceType } from '../../../shared/enums/invoiceType';
 import type { Language } from '../../../shared/enums/language';
 import { useExportPdf } from '../../../shared/hooks/fileExport/useExportPdf';
-import { useExportPdfWithXml } from '../../../shared/hooks/fileExport/useExportPdfWithXml';
-import { useExportXML } from '../../../shared/hooks/fileExport/useExportXML';
-import { useGetEInvoiceXML } from '../../../shared/hooks/invoices/useGetEInvoiceXML';
 import { usePrintReceipt } from '../../../shared/hooks/print/usePrintReceipt';
 import type { Bank } from '../../../shared/types/bank';
 import type { Business } from '../../../shared/types/business';
@@ -30,11 +25,10 @@ import type {
   TaxForm
 } from '../../../shared/types/invoice';
 import type { Item } from '../../../shared/types/item';
-import type { Response } from '../../../shared/types/response';
 import type { StyleProfile } from '../../../shared/types/styleProfiles';
-import { getInvoiceTotal, getPaidAmount } from '../../../shared/utils/invoiceFunctions';
-import { useAppDispatch, useAppSelector } from '../../../state/configureStore';
-import { addToast, selectSettings } from '../../../state/pageSlice';
+import { getPaymentBalance } from '../../../../backend/shared/utils/paymentAllocation';
+import { useAppSelector } from '../../../state/configureStore';
+import { selectSettings } from '../../../state/pageSlice';
 import { NotesSelector } from './../Form/NotesSelector';
 import { StatusSelector } from './../Form/StatusSelector';
 import { AttachmentsList } from './AttachmentsList';
@@ -89,32 +83,7 @@ const InvoiceFormComponent: FC<Props> = ({
 
   const [selectedInvoiceItem, setSelectedInvoiceItem] = useState<InvoiceItem | undefined>(undefined);
 
-  const [xmlData, setXMLData] = useState<
-    { invoiceId: number; einvoice: EInvoice; type: 'singleFile' | 'embeddedFile' } | undefined
-  >(undefined);
-  const { exportXML } = useExportXML({ invoiceForm, storeSettings });
-  const { exportPdfWithXml } = useExportPdfWithXml({ invoiceForm, storeSettings });
   const { printReceipt } = usePrintReceipt({ invoiceForm, storeSettings });
-
-  const dispatch = useAppDispatch();
-  const { execute: retrieveXML } = useGetEInvoiceXML({
-    params: xmlData,
-    immediate: false,
-    onDone: (data: Response<Uint8Array | undefined>) => {
-      if (!data.success) {
-        if (data.message) {
-          const message = i18n.exists(data.message) ? t(data.message) : data.message;
-          dispatch(addToast({ message: message, severity: 'error' }));
-        } else if (data.key) dispatch(addToast({ message: t(data.key), severity: 'error' }));
-      }
-
-      if (xmlData && data.data && xmlData.type === 'singleFile') {
-        exportXML(data.data, xmlData?.einvoice);
-      } else if (xmlData && data.data && xmlData.type === 'embeddedFile') {
-        exportPdfWithXml(data.data);
-      }
-    }
-  });
 
   const invoiceInformation = useMemo(
     () => ({
@@ -662,19 +631,7 @@ const InvoiceFormComponent: FC<Props> = ({
   );
 
   const getStatus = useCallback((newInvoiceForm: InvoiceFromData) => {
-    const totalAmountPaid = getPaidAmount(newInvoiceForm?.invoicePayments ?? []);
-    const totalAmount = getInvoiceTotal({
-      taxRate: newInvoiceForm?.taxRate ?? 0,
-      taxType: newInvoiceForm?.taxType,
-      invoiceItems: newInvoiceForm?.invoiceItems ?? [],
-      discountType: newInvoiceForm?.discountType,
-      discountAmount: Number(newInvoiceForm?.discountAmountCents ?? 0),
-      discountPercent: newInvoiceForm?.discountPercent,
-      shippingFee: Number(newInvoiceForm?.shippingFeeCents ?? 0),
-      surchargeType: newInvoiceForm?.surchargeType,
-      surchargeAmount: Number(newInvoiceForm?.surchargeAmountCents ?? 0),
-      surchargePercent: newInvoiceForm?.surchargePercent
-    });
+    const { total: totalAmount, paid: totalAmountPaid } = getPaymentBalance(newInvoiceForm);
 
     if (totalAmountPaid < totalAmount && totalAmountPaid > 0) {
       return InvoiceStatus.partiallyPaid;
@@ -702,13 +659,21 @@ const InvoiceFormComponent: FC<Props> = ({
   );
 
   const handleOnClickAddPayment = useCallback(
-    (data: PaymentForm) => {
+    (data: PaymentForm, preservePaidStatus = false) => {
       if (!invoiceForm) return;
-      if (!data.paidAmount || !data.paidAt || !data.paymentMethod) return;
+      if (
+        !data.paidAmount ||
+        !Number.isFinite(data.paidAmount) ||
+        data.paidAmount <= 0 ||
+        !data.paidAt ||
+        !data.paymentMethod
+      )
+        return;
 
       const paidAmount = invoiceForm.invoiceCurrencySnapshot?.currencySubunit
-        ? (data.paidAmount ?? 0) * invoiceForm.invoiceCurrencySnapshot?.currencySubunit
-        : data.paidAmount;
+        ? Math.round(data.paidAmount * invoiceForm.invoiceCurrencySnapshot.currencySubunit)
+        : Math.round(data.paidAmount);
+      if (!Number.isSafeInteger(paidAmount) || paidAmount <= 0) return;
 
       const payment = {
         id: Date.now(),
@@ -725,6 +690,9 @@ const InvoiceFormComponent: FC<Props> = ({
         if (index !== -1) {
           invoicePayments[index] = {
             ...invoicePayments[index],
+            paidAt: payment.paidAt,
+            paymentMethod: payment.paymentMethod,
+            notes: payment.notes,
             amountCents: payment.amountCents?.toString() ?? '0'
           };
         } else {
@@ -750,7 +718,10 @@ const InvoiceFormComponent: FC<Props> = ({
         ...invoiceForm,
         invoicePayments
       };
-      newInvoiceForm.status = getStatus(newInvoiceForm);
+      newInvoiceForm.status =
+        preservePaidStatus && invoiceForm.status === InvoiceStatus.paid
+          ? InvoiceStatus.paid
+          : getStatus(newInvoiceForm);
       startTransition(() => {
         setInvoiceForm(newInvoiceForm);
       });
@@ -847,12 +818,6 @@ const InvoiceFormComponent: FC<Props> = ({
     [setInvoiceForm, invoiceForm, handleOnClose]
   );
 
-  useEffect(() => {
-    if (xmlData) {
-      retrieveXML();
-    }
-  }, [xmlData, retrieveXML]);
-
   return (
     <Box
       sx={{
@@ -908,6 +873,7 @@ const InvoiceFormComponent: FC<Props> = ({
           <Divider flexItem />
           <StatusSelector
             invoiceForm={invoiceForm}
+            onRecordPayment={payment => handleOnClickAddPayment(payment, invoiceForm?.status === InvoiceStatus.paid)}
             onArchivedChanged={value => {
               startTransition(() => {
                 setInvoiceForm(prev => ({ ...prev, isArchived: value }));
@@ -1025,20 +991,7 @@ const InvoiceFormComponent: FC<Props> = ({
           handleOnClose(setMoreActionDropdown);
           exportPdf();
         }}
-        onExportPDFUBL={() => {
-          handleOnClose(setMoreActionDropdown);
-          if (invoiceForm?.id)
-            setXMLData({ invoiceId: invoiceForm.id, einvoice: EInvoice.ubl21, type: 'embeddedFile' });
-        }}
-        onExportUBLXML={() => {
-          handleOnClose(setMoreActionDropdown);
-          if (invoiceForm?.id) setXMLData({ invoiceId: invoiceForm.id, einvoice: EInvoice.ubl21, type: 'singleFile' });
-        }}
-        onExportXRechnungXML={() => {
-          handleOnClose(setMoreActionDropdown);
-          if (invoiceForm?.id)
-            setXMLData({ invoiceId: invoiceForm.id, einvoice: EInvoice.xrechnung, type: 'singleFile' });
-        }}
+
         showDelete={invoiceForm?.id !== undefined}
         showDuplicate={invoiceForm?.id !== undefined}
         showMakeInvoice={invoiceForm?.id !== undefined && invoiceForm.invoiceType === InvoiceType.quotation}

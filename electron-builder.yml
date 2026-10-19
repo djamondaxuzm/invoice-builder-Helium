@@ -13,6 +13,7 @@ publish:
 files:
   - dist-fe/**
   - dist-be/**
+  - "!dist-be/backend/server/**"
   - node_modules/**
   - package.json
   - LICENSE
@@ -36,13 +37,6 @@ nsis:
   allowElevation: false
   allowToChangeInstallationDirectory: false
 
-linux:
-  target:
-    - deb
-    - AppImage
-  category: Office
-  maintainer: 'djamondaxuzm'
-  icon: 'src/backend/main/assets/linux-icons'
 
 mac:
   target:

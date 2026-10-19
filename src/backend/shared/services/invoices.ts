@@ -1,5 +1,4 @@
 import type { Response } from '../../shared/types/response';
-import type { EInvoice } from '../enums/einvoice';
 import { InvoiceStatus } from '../enums/invoiceStatus';
 import { InvoiceType } from '../enums/invoiceType';
 import type { DatabaseAdapter } from '../types/DatabaseAdapter';
@@ -23,13 +22,16 @@ import type {
 } from '../types/invoice';
 import type { FilterData } from '../types/invoiceFilter';
 import { getDefaultValue } from '../utils/dbHelper';
-import { generateInvoiceXML } from '../utils/einvoice/xmlProfiles';
 import { mapDatabaseError } from '../utils/errorFunctions';
 import { getWhereClauseFromFilters } from '../utils/filterFunctions';
 import { syncAttachments } from '../utils/syncAttachments';
 import { serializeCustomField, syncInvoiceItems } from '../utils/invoiceItems';
+import { parseISO } from 'date-fns';
+import { DatabaseType } from '../enums/databaseType';
+import { getPaymentBalance, type BulkPaymentRequest } from '../utils/paymentAllocation';
 
 type GetInvoicesOptions = {
+  ids?: number[];
   attachmentMetadataOnly?: boolean;
   id?: number;
   type?: 'invoice' | 'quotation';
@@ -42,6 +44,109 @@ type NextSequenceData = {
 };
 
 const numericInvoicePattern = /^\d+$/;
+
+// One batch per connection; a duplicate request must never join another batch's transaction.
+const activePaymentBatches = new WeakSet<DatabaseAdapter>();
+export const recordBulkPayment = async (
+  db: DatabaseAdapter,
+  request: BulkPaymentRequest
+): Promise<Response<{ invoiceIds: number[] }>> => {
+  if (activePaymentBatches.has(db))
+    return { success: false, message: 'A payment batch is already saving. Refresh before trying again.' };
+  activePaymentBatches.add(db);
+  let began = false;
+  try {
+    if (
+      !request ||
+      !Array.isArray(request.allocations) ||
+      !request.allocations.length ||
+      request.allocations.length > 500
+    )
+      throw new Error('Select between 1 and 500 invoices.');
+    const rows = request.allocations;
+    const ids = rows.map(row => row.invoiceId);
+    if (new Set(ids).size !== ids.length || ids.some(id => !Number.isSafeInteger(id) || id <= 0))
+      throw new Error('Invalid or repeated invoice selection.');
+    if (
+      !Number.isSafeInteger(request.clientId) ||
+      !Number.isSafeInteger(request.businessId) ||
+      !Number.isSafeInteger(request.currencySubunit) ||
+      request.currencySubunit <= 0 ||
+      typeof request.currencyCode !== 'string'
+    )
+      throw new Error('Choose a valid client, business and currency.');
+    if (!['Cash', 'Cheque', 'Bank', 'Credit card', 'PayPal', 'Other'].includes(request.paymentMethod))
+      throw new Error('Choose a valid payment method.');
+    const date = typeof request.paidAt === 'string' ? parseISO(request.paidAt) : new Date(NaN);
+    if (!Number.isFinite(date.getTime())) throw new Error('Choose a valid payment date.');
+    if (request.notes !== undefined && (typeof request.notes !== 'string' || request.notes.length > 10000))
+      throw new Error('Payment notes are too long.');
+    for (const row of rows) {
+      if (
+        ![row.amountCents, row.expectedTotalCents, row.expectedPaidCents].every(Number.isSafeInteger) ||
+        row.amountCents <= 0 ||
+        typeof row.expectedStatus !== 'string' ||
+        typeof row.expectedUpdatedAt !== 'string'
+      )
+        throw new Error('Invalid payment allocation.');
+    }
+    await db.run(db.type === DatabaseType.sqlite ? 'BEGIN IMMEDIATE' : 'BEGIN');
+    began = true;
+    if (db.type === DatabaseType.postgre)
+      await db.all('SELECT id FROM invoices WHERE id IN (' + ids.join(',') + ') ORDER BY id FOR UPDATE');
+    const invoices = await getInvoices(db, { ids, type: 'invoice', attachmentMetadataOnly: true });
+    if (invoices.length !== rows.length)
+      throw new Error('An invoice no longer exists. Refresh the list and review the payment again.');
+    const lookup = new Map(invoices.map(invoice => [invoice.id, invoice]));
+    // Validate the complete batch before any writes. Amounts are integer minor units.
+    for (const row of rows) {
+      const invoice = lookup.get(row.invoiceId)!;
+      const currency = invoice.invoiceCurrencySnapshot;
+      if (
+        invoice.clientId !== request.clientId ||
+        invoice.businessId !== request.businessId ||
+        currency?.currencyCode !== request.currencyCode ||
+        currency.currencySubunit !== request.currencySubunit
+      )
+        throw new Error('All payments must belong to the selected client, business and currency.');
+      const balance = getPaymentBalance(invoice);
+      if (
+        balance.total !== row.expectedTotalCents ||
+        balance.paid !== row.expectedPaidCents ||
+        invoice.status !== row.expectedStatus ||
+        (invoice.updatedAt ?? '') !== row.expectedUpdatedAt
+      )
+        throw new Error('An invoice changed after the preview. Refresh the list and review the payment again.');
+      if (row.amountCents > balance.remaining)
+        throw new Error('A payment exceeds the current outstanding balance. Refresh and review the selection.');
+    }
+    const now = new Date().toISOString();
+    for (const row of rows) {
+      await db.run(
+        'INSERT INTO invoice_payments ("parentInvoiceId", "amountCents", "paidAt", "paymentMethod", "notes", "createdAt", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [row.invoiceId, row.amountCents, date.toISOString(), request.paymentMethod, request.notes ?? null, now, now]
+      );
+      const settled = row.expectedPaidCents + row.amountCents >= row.expectedTotalCents;
+      await db.run(
+        'UPDATE invoices SET "status" = ?, "paidAt" = ?, "closedAt" = NULL, "updatedAt" = ? WHERE "id" = ?',
+        [
+          settled ? InvoiceStatus.paid : InvoiceStatus.partiallyPaid,
+          settled ? date.toISOString() : null,
+          now,
+          row.invoiceId
+        ]
+      );
+    }
+    await db.run('COMMIT');
+    began = false;
+    return { success: true, data: { invoiceIds: ids } };
+  } catch (error) {
+    if (began) await rollbackOrThrow(db);
+    return { success: false, message: error instanceof Error ? error.message : 'Could not save the payment batch.' };
+  } finally {
+    activePaymentBatches.delete(db);
+  }
+};
 
 const invoiceCurrencySnapshotsFields: (keyof InvoiceCurrencySnapshots)[] = [
   'parentInvoiceId',
@@ -509,7 +614,7 @@ const setPaidAtAndClosedAt = (invoice: Invoice, previous?: Invoice): Invoice => 
     paidAt:
       invoice.status === InvoiceStatus.paid
         ? previous?.status === InvoiceStatus.paid
-          ? (previous.paidAt ?? now)
+          ? previous.paidAt
           : now
         : undefined,
     closedAt:
@@ -634,8 +739,10 @@ const getDuplicateInvoiceNumber = async (
 };
 
 const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => {
-  const { id, type, filter, attachmentMetadataOnly } = options;
+  const { id, ids, type, filter, attachmentMetadataOnly } = options;
   if (id !== undefined && (!Number.isSafeInteger(id) || id <= 0)) throw new Error('Invalid invoice ID.');
+  if (ids && (!ids.length || ids.length > 500 || ids.some(value => !Number.isSafeInteger(value) || value <= 0)))
+    throw new Error('Select between 1 and 500 valid invoices.');
 
   const whereClause = filter
     ? getWhereClauseFromFilters({
@@ -650,6 +757,7 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
 
   const conditions: string[] = [];
   if (id) conditions.push(`i."id" = ${id}`);
+  if (ids) conditions.push(`i."id" IN (${ids.join(',')})`);
   if (type) conditions.push(`i."invoiceType" = '${type}'`);
   if (whereClause) conditions.push(whereClause);
   const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -801,20 +909,6 @@ const getInvoices = async (db: DatabaseAdapter, options: GetInvoicesOptions) => 
       invoiceStyleProfileSnapshot: stylesByInvoice.get(invoiceId)?.[0]
     };
   });
-};
-
-export const getInvoiceXML = async (db: DatabaseAdapter, data: { invoiceId: number; einvoice: EInvoice }) => {
-  const { invoiceId, einvoice } = data;
-  const invoiceResult = await getInvoices(db, { id: invoiceId });
-
-  if (invoiceResult.length <= 0) {
-    throw new Error('error.invoiceNotFound');
-  }
-
-  const invoice = invoiceResult[0];
-  const xmlData = generateInvoiceXML(einvoice, invoice);
-
-  return { success: true, data: xmlData };
 };
 
 export const getNextSequence = async (

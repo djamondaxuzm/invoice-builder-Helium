@@ -1,3 +1,18 @@
+## {DATE}, version {VERSION}
+
+New features & improvements
+
+- Add a financial dashboard with local date ranges, client/business/currency filters, invoice and actual-payment trends, overdue aging, client comparisons, payment methods/ledger, item sales and CSV export.
+- Add client-first bulk payments with oldest-first allocation, a per-invoice preview, stale-data validation and all-or-nothing persistence.
+- Make Mark as paid collect dated payment details; let legacy Paid invoices add missing history without reopening balances or fabricating dates.
+- Limit distribution to Windows and macOS; remove Linux/Docker packaging and EU XML export UI/generators. Preserve database schema, migrations, legacy metadata, connection support, backups and automation. Exclude server-only packages from desktop runtime dependencies.
+
+Bug Fixes
+
+- Include the whole final local day and matching currency snapshots in reporting. Keep invoice issue dates separate from payment dates, retain currency selection, and preserve the prior range when custom selection is canceled.
+- Share invoice monetary math across PDF, reporting and payments; include item-exclusive taxes alongside invoice-inclusive tax, and round balances to currency minor units before assigning payment status.
+- Update edited payment dates, methods and notes alongside amounts. Keep overpayment credits separate from other invoices' debts and report load errors explicitly.
+
 ## 2.8.1 - Helium personal release (2026-10-18)
 
 - Preserve logo aspect ratios in individual invoice and quotation PDFs at all logo sizes.

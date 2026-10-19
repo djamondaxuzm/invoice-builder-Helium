@@ -1,179 +1,246 @@
-import { Box, Typography } from '@mui/material';
-import { parseISO } from 'date-fns';
-import { memo, useMemo, type FC } from 'react';
+import { Alert, Box, Button, Paper, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NoItem } from '../../shared/components/lists/noItem/NoItem';
-import { ReportDateType } from '../../shared/enums/reportDateType';
-import type { ClientRevenue } from '../../shared/types/clientRevenue';
-import type { Invoice, InvoicesByCurrency } from '../../shared/types/invoice';
-import type { ItemSales } from '../../shared/types/itemSales';
-import { getInvoiceItemTotal, getInvoiceTotal } from '../../shared/utils/invoiceFunctions';
-import { ClientsRevenueChart } from './ClientsRevenueChart';
+import { saveAs } from 'file-saver';
+import { DateFormat } from '../../shared/enums/dateFormat';
+import { formatDate } from '../../shared/utils/formatFunctions';
+import { reportCsv, reportDay, type ReportData, type ReportRange } from '../../shared/utils/reportFunctions';
+import { useAppSelector } from '../../state/configureStore';
+import { selectSettings } from '../../state/pageSlice';
 import { FinancialCards } from './FinancialCards';
-import { ItemsSalesChart } from './ItemsSalesChart';
 import { TrendChart } from './TrendChart';
+import { BreakdownChart } from './BreakdownChart';
+import { ReportTable } from './ReportTable';
+import { reportFormatter } from './formatReport';
 
-interface Props {
-  reportDateType: ReportDateType;
-  currencyCode: string;
-  groupedMeta: { groups: InvoicesByCurrency; invoices: Invoice[] };
-  dates: { from: string; to: string };
-}
-const OverviewComponent: FC<Props> = ({ reportDateType, groupedMeta, dates, currencyCode }) => {
+export const Overview = ({
+  data,
+  range,
+  today,
+  onClient
+}: {
+  data: ReportData;
+  range: ReportRange;
+  today: string;
+  onClient: (value: string) => void;
+}) => {
   const { t } = useTranslation();
-  const { groups, invoices } = groupedMeta;
-
-  const toCumulativeTrend = (data: { date: string; total: number }[]) => {
-    let running = 0;
-
-    return data
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map(item => {
-        running += item.total;
-        return {
-          date: item.date,
-          total: running
-        };
-      });
+  const settings = useAppSelector(selectSettings);
+  const dateFormat = settings?.dateFormat ?? DateFormat.yyyyMMddDash;
+  const money = useMemo(
+    () => reportFormatter(data.currency, settings?.amountFormat),
+    [data.currency, settings?.amountFormat]
+  );
+  const [tab, setTab] = useState('overview');
+  const [clientMetric, setClientMetric] = useState<'billed' | 'payments' | 'outstanding'>('billed');
+  const clients = useMemo(
+    () => [...data.clients].sort((a, b) => b[clientMetric] - a[clientMetric] || a.id - b.id),
+    [data.clients, clientMetric]
+  );
+  const clientColumns = [
+    'client',
+    'invoiceCountLabel',
+    'invoicedInPeriod',
+    'paymentsInPeriod',
+    'outstandingToday',
+    'overdueToday',
+    'credit'
+  ].map(key => t(`reports.${key}`));
+  const paymentColumns = ['paymentDate', 'invoice', 'client', 'paymentMethod', 'amount'].map(key =>
+    t(`reports.${key}`)
+  );
+  const itemColumns = ['item', 'quantity', 'itemSales'].map(key => t(`reports.${key}`));
+  const download = () => {
+    const rows: (string | number)[][] =
+      tab === 'clients'
+        ? [
+            clientColumns,
+            ...clients.map(c => [
+              `${c.name} (#${c.id})`,
+              c.invoiceCount,
+              c.billed,
+              c.payments,
+              c.outstanding,
+              c.overdue,
+              c.credit
+            ])
+          ]
+        : tab === 'payments'
+          ? [
+              paymentColumns,
+              ...data.paymentRows.map(p => [reportDay(p.date), p.invoiceNumber, p.client, p.method, p.amount])
+            ]
+          : [itemColumns, ...data.items.map(i => [i.name, i.quantity, i.amount])];
+    rows.unshift([
+      'Currency',
+      data.currency.code,
+      'From',
+      reportDay(range.from),
+      'To',
+      reportDay(range.to),
+      'Balances as of',
+      today
+    ]);
+    saveAs(
+      new Blob([reportCsv(rows)], { type: 'text/csv;charset=utf-8' }),
+      `Helium-${tab}-${data.currency.code}-${reportDay(range.from)}-${reportDay(range.to)}.csv`
+    );
   };
-
-  const reportData = useMemo(() => {
-    const data = groups[currencyCode];
-    if (!data) {
-      return null;
-    }
-
-    const fromDate = parseISO(dates.from);
-    const toDate = parseISO(dates.to);
-    const filteredInvoices = invoices.filter(inv => {
-      if (inv.currencyId !== data.currencyId) return false;
-      const issueDate = parseISO(inv.issuedAt);
-      let paidAtDate: Date | undefined = undefined;
-      if (inv.paidAt) {
-        paidAtDate = parseISO(inv.paidAt);
-      }
-      if (reportDateType === ReportDateType.issuedAt) {
-        return issueDate >= fromDate && issueDate <= toDate;
-      }
-      if (!paidAtDate) return false;
-
-      return paidAtDate >= fromDate && paidAtDate <= toDate;
-    });
-    const trendChartDataRaw = filteredInvoices.map(inv => {
-      const totalAmountCents = getInvoiceTotal({
-        taxRate: inv.taxRate,
-        taxType: inv.taxType,
-        invoiceItems: inv.invoiceItems,
-        discountType: inv.discountType,
-        discountAmount: Number(inv.discountAmountCents),
-        discountPercent: inv.discountPercent,
-        shippingFee: Number(inv.shippingFeeCents),
-        surchargeType: inv.surchargeType,
-        surchargeAmount: Number(inv.surchargeAmountCents),
-        surchargePercent: inv.surchargePercent,
-        includeTax: true
-      });
-      const totalAmount = totalAmountCents / (inv.invoiceCurrencySnapshot?.currencySubunit ?? 0);
-      return {
-        date: reportDateType === ReportDateType.issuedAt ? inv.issuedAt : (inv.paidAt ?? inv.issuedAt),
-        total: totalAmount
-      };
-    });
-    const trendChartData = toCumulativeTrend(trendChartDataRaw);
-    const clientRevenueData = Object.values(
-      filteredInvoices.reduce(
-        (acc, inv) => {
-          const name = inv.invoiceClientSnapshot?.clientName ?? '';
-          const totalAmountCents = getInvoiceTotal({
-            taxRate: inv.taxRate,
-            taxType: inv.taxType,
-            invoiceItems: inv.invoiceItems,
-            discountType: inv.discountType,
-            discountAmount: Number(inv.discountAmountCents),
-            discountPercent: inv.discountPercent,
-            shippingFee: Number(inv.shippingFeeCents),
-            surchargeType: inv.surchargeType,
-            surchargeAmount: Number(inv.surchargeAmountCents),
-            surchargePercent: inv.surchargePercent,
-            includeTax: true
-          });
-          const revenue = totalAmountCents / (inv.invoiceCurrencySnapshot?.currencySubunit ?? 0);
-
-          if (!acc[name]) {
-            acc[name] = {
-              name,
-              invoiceCount: 0,
-              revenue: 0
-            };
-          }
-
-          acc[name].invoiceCount += 1;
-          acc[name].revenue += revenue;
-
-          return acc;
-        },
-        {} as Record<string, ClientRevenue>
-      )
-    );
-    const itemSalesData = Object.values(
-      filteredInvoices.reduce(
-        (acc, inv) => {
-          inv.invoiceItems.forEach(item => {
-            const name = item.invoiceItemSnapshot.itemName;
-            const quantity = item.quantity;
-            const itemTotalAmountCents = getInvoiceItemTotal({
-              taxRate: item.taxRate,
-              unitPrice: Number(item.invoiceItemSnapshot.unitPriceCents),
-              quantity: Number(quantity),
-              taxType: item.taxType,
-              includeTax: true,
-              invoiceItems: inv.invoiceItems,
-              discountType: inv.discountType,
-              discountAmount: Number(inv.discountAmountCents),
-              discountPercent: inv.discountPercent
-            });
-            const itemTotalAmount = itemTotalAmountCents / (inv.invoiceCurrencySnapshot?.currencySubunit ?? 0);
-
-            if (!acc[name]) {
-              acc[name] = {
-                name,
-                quantity: 0,
-                amount: 0
-              };
-            }
-
-            acc[name].quantity += Number(quantity);
-            acc[name].amount += itemTotalAmount;
-          });
-
-          return acc;
-        },
-        {} as Record<string, ItemSales>
-      )
-    );
-
-    return { trendChartData, clientRevenueData, itemSalesData };
-  }, [groups, reportDateType, currencyCode, dates, invoices]);
-
   return (
-    <>
-      <Box sx={{ mt: 3, height: '100%' }}>
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-            {t('reports.currencyDashboard', { currency: currencyCode })}
-          </Typography>
-          <>
-            {groups[currencyCode] && <FinancialCards data={groups[currencyCode]} />}
-            {groups[currencyCode] && reportData && <TrendChart data={reportData.trendChartData} />}
-            {groups[currencyCode] && reportData && <ClientsRevenueChart data={reportData.clientRevenueData} />}
-            {groups[currencyCode] && reportData && <ItemsSalesChart data={reportData.itemSalesData} />}
-          </>
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        {formatDate(range.from, dateFormat)} – {formatDate(range.to, dateFormat)} · {data.currency.label}
+      </Typography>
+      {data.warnings.length > 0 && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          <Typography>{t('reports.dataWarnings')}</Typography>
+          {data.warnings.map(message => (
+            <Typography key={message} variant="body2">
+              {message}
+            </Typography>
+          ))}
+        </Alert>
+      )}
+      <FinancialCards data={data} money={money} />
+      <Typography variant="body2" color="text.secondary">
+        {t('reports.dateBasisNote', { date: formatDate(today, dateFormat) })}
+      </Typography>
+      {data.markedPaid > 0 && (
+        <Alert severity="info" sx={{ my: 2 }}>
+          {t('reports.manualPaidNote', { amount: money(data.markedPaid) })}
+        </Alert>
+      )}
+      <TrendChart data={data.trend} money={money} dateFormat={dateFormat} monthly={data.monthly} />
+      <Paper variant="outlined" sx={{ p: { xs: 1, sm: 2 } }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Tabs
+            value={tab}
+            onChange={(_, value) => setTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            aria-label={t('reports.views')}
+          >
+            {['overview', 'clients', 'payments', 'items'].map(value => (
+              <Tab key={value} value={value} label={t(`reports.${value}`)} />
+            ))}
+          </Tabs>
+          {tab !== 'overview' && <Button onClick={download}>{t('reports.exportCsv')}</Button>}
         </Box>
-
-        {!groups[currencyCode] && <NoItem text={t('reports.noItems')} />}
-      </Box>
-    </>
+        {tab === 'overview' && (
+          <>
+            <Typography sx={{ mt: 2 }}>
+              {t('reports.settlementSummary', {
+                rate: data.collectionRate.toFixed(2),
+                amount: money(data.periodOutstanding)
+              })}
+            </Typography>
+            {data.credit > 0 && <Typography>{t('reports.creditNote', { amount: money(data.credit) })}</Typography>}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3 }}>
+              <BreakdownChart
+                title={t('reports.agingTitle')}
+                rows={data.aging.map(a => ({ name: t(`reports.${a.key}`), value: a.amount }))}
+                formatValue={money}
+              />
+              <BreakdownChart
+                title={t('reports.statusTitle')}
+                rows={data.statuses.map(s => ({ name: t(`reports.${s.key}`), value: s.count }))}
+                formatValue={value => String(value)}
+              />
+            </Box>
+            <ReportTable
+              label={t('reports.agingTitle')}
+              columns={[t('reports.age'), t('reports.invoiceCountLabel'), t('reports.outstanding')]}
+              rows={data.aging.map(a => ({
+                key: a.key,
+                cells: [t(`reports.${a.key}`), String(a.count), money(a.amount)]
+              }))}
+            />
+          </>
+        )}
+        {tab === 'clients' && (
+          <>
+            <TextField
+              select
+              label={t('reports.rankClientsBy')}
+              value={clientMetric}
+              size="small"
+              sx={{ mt: 2, minWidth: 240 }}
+              slotProps={{ select: { native: true } }}
+              onChange={e => setClientMetric(e.target.value as typeof clientMetric)}
+            >
+              <option value="billed">{t('reports.invoicedInPeriod')}</option>
+              <option value="payments">{t('reports.paymentsInPeriod')}</option>
+              <option value="outstanding">{t('reports.outstandingToday')}</option>
+            </TextField>
+            <BreakdownChart
+              title={t('reports.topTenClients')}
+              rows={clients.slice(0, 10).map(c => ({ name: `${c.name} (#${c.id})`, value: c[clientMetric] }))}
+              formatValue={money}
+            />
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {t('reports.clientDrilldown')}
+            </Typography>
+            <ReportTable
+              key={`${data.currency.value}:${range.from}:${range.to}:${clientMetric}`}
+              label={t('reports.clients')}
+              columns={clientColumns}
+              onFirstCell={onClient}
+              rows={clients.map(c => ({
+                key: String(c.id),
+                cells: [
+                  `${c.name} (#${c.id})`,
+                  String(c.invoiceCount),
+                  money(c.billed),
+                  money(c.payments),
+                  money(c.outstanding),
+                  money(c.overdue),
+                  money(c.credit)
+                ]
+              }))}
+            />
+          </>
+        )}
+        {tab === 'payments' && (
+          <>
+            <BreakdownChart
+              title={t('reports.paymentMethods')}
+              rows={data.methods.map(m => ({ name: m.key, value: m.amount }))}
+              formatValue={money}
+            />
+            {!data.paymentRows.length && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {t('reports.noPayments')}
+              </Alert>
+            )}
+            <ReportTable
+              key={`${data.currency.value}:${range.from}:${range.to}`}
+              label={t('reports.paymentLedger')}
+              columns={paymentColumns}
+              rows={data.paymentRows.map(p => ({
+                key: p.key,
+                cells: [formatDate(p.date, dateFormat), p.invoiceNumber, p.client, p.method, money(p.amount)]
+              }))}
+            />
+          </>
+        )}
+        {tab === 'items' && (
+          <>
+            <BreakdownChart
+              title={t('reports.topTenItems')}
+              rows={data.items.slice(0, 10).map(i => ({ name: i.name, value: i.amount }))}
+              formatValue={money}
+            />
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              {t('reports.itemSalesNote')}
+            </Typography>
+            <ReportTable
+              label={t('reports.items')}
+              columns={itemColumns}
+              rows={data.items.map(i => ({ key: i.key, cells: [i.name, String(i.quantity), money(i.amount)] }))}
+            />
+          </>
+        )}
+      </Paper>
+    </Box>
   );
 };
-
-export const Overview = memo(OverviewComponent);

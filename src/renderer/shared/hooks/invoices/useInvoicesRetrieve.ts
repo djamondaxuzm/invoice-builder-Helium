@@ -24,7 +24,12 @@ export const useInvoicesRetrieve = ({
     () => getApi().getAllInvoices(type, filter, { attachmentMetadataOnly: true }),
     [filter, type]
   );
-  const { data: invoices, execute } = useAsyncAction<Response<Invoice[]>>(asyncFn, {
+  const {
+    data: invoices,
+    loading,
+    error,
+    execute
+  } = useAsyncAction<Response<Invoice[]>>(asyncFn, {
     showLoader,
     immediate,
     onDone
@@ -54,5 +59,5 @@ export const useInvoicesRetrieve = ({
     );
   }, [invoices, dispatch]);
 
-  return { invoices: invoices?.data ?? [], execute };
+  return { invoices: invoices?.data ?? [], loading, error, response: invoices, execute };
 };

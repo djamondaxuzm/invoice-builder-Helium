@@ -1,63 +1,55 @@
-import { Grid, useTheme } from '@mui/material';
-import { memo, type FC } from 'react';
+import { Box, Paper, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { SummaryCard } from '../../shared/components/layout/summaryCard/SummaryCard';
-import { Themes } from '../../shared/enums/themes';
-import type { InvoicesByCurrencyMeta } from '../../shared/types/invoice';
-import { formatAmount } from '../../shared/utils/formatFunctions';
-import { useAppSelector } from '../../state/configureStore';
-import { selectSettings } from '../../state/pageSlice';
+import type { ReportData } from '../../shared/utils/reportFunctions';
 
-interface Props {
-  data: InvoicesByCurrencyMeta;
-}
-const FinancialCardsComponent: FC<Props> = ({ data }) => {
-  const theme = useTheme();
+export const FinancialCards = ({ data, money }: { data: ReportData; money: (value: number) => string }) => {
   const { t } = useTranslation();
-  const storeSettings = useAppSelector(selectSettings);
-
+  const cards = [
+    {
+      key: 'billed',
+      title: t('reports.invoicedInPeriod'),
+      value: money(data.billed),
+      detail: t('reports.invoiceAverage', { count: data.invoiceCount, average: money(data.averageInvoice) })
+    },
+    {
+      key: 'payments',
+      title: t('reports.paymentsInPeriod'),
+      value: money(data.payments),
+      detail: t('reports.paymentCount', { count: data.paymentRows.length })
+    },
+    {
+      key: 'outstanding',
+      title: t('reports.outstandingToday'),
+      value: money(data.outstanding),
+      detail: t('reports.allIssueDates')
+    },
+    {
+      key: 'overdue',
+      title: t('reports.overdueToday'),
+      value: money(data.overdue),
+      detail: t('reports.overdue', { count: data.overdueCount })
+    }
+  ];
   return (
-    <Grid container spacing={2}>
-      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-        <SummaryCard
-          title={t('common.total')}
-          value={formatAmount(data.totalAmount, storeSettings?.amountFormat)}
-          subtitle={t('reports.totalInvoices', { count: data.invoiceCount })}
-          bgColor={theme.palette.primary.main}
-          textColor={theme.palette.mode === Themes.dark ? theme.palette.common.black : theme.palette.common.white}
-        />
-      </Grid>
-      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-        <SummaryCard
-          title={t('reports.collectionRate')}
-          value={`${data.collectionRate.toFixed(2)}%`}
-          subtitle={t('reports.avgInvoice', {
-            avg: formatAmount(data.avgPerInvoice, storeSettings?.amountFormat)
-          })}
-          bgColor={theme.palette.secondary.main}
-          textColor={theme.palette.mode === Themes.dark ? theme.palette.common.black : theme.palette.common.white}
-        />
-      </Grid>
-      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-        <SummaryCard
-          title={t('reports.collected')}
-          value={formatAmount(data.totalAmountPaid, storeSettings?.amountFormat)}
-          subtitle={t('reports.overdue', {
-            count: data.overdueCount
-          })}
-          bgColor={theme.palette.success.main}
-          textColor={theme.palette.mode === Themes.dark ? theme.palette.common.black : theme.palette.common.white}
-        />
-      </Grid>
-      <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-        <SummaryCard
-          title={t('reports.outstanding')}
-          value={formatAmount(data.balanceDue, storeSettings?.amountFormat)}
-          bgColor={theme.palette.warning.main}
-          textColor={theme.palette.mode === Themes.dark ? theme.palette.common.black : theme.palette.common.white}
-        />
-      </Grid>
-    </Grid>
+    <Box
+      sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', xl: 'repeat(4, 1fr)' }, gap: 2, my: 2 }}
+    >
+      {cards.map(card => (
+        <Paper
+          key={card.key}
+          variant="outlined"
+          sx={{ p: 2, borderTop: 3, borderTopColor: 'primary.main' }}
+          data-testid={`report-${card.key}`}
+        >
+          <Typography variant="body2" color="text.secondary">
+            {card.title}
+          </Typography>
+          <Typography variant="h5" sx={{ my: 1, fontWeight: 600 }}>
+            {card.value}
+          </Typography>
+          <Typography variant="caption">{card.detail}</Typography>
+        </Paper>
+      ))}
+    </Box>
   );
 };
-export const FinancialCards = memo(FinancialCardsComponent);

@@ -1,5 +1,6 @@
-import { Autocomplete, Box, Grid, SwipeableDrawer, TextField, useMediaQuery, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Grid, SwipeableDrawer, TextField, useMediaQuery, useTheme } from '@mui/material';
 import { memo, useEffect, useState, type FC } from 'react';
+import { parseISO } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { AmountInput } from '../../../../shared/components/inputs/amountInput/AmountInput';
 import { Datepicker } from '../../../../shared/components/inputs/datepicker/Datepicker';
@@ -17,8 +18,24 @@ interface Props {
   onOpen?: () => void;
   onClick?: (data: PaymentForm) => void;
   data?: PaymentForm;
+  title?: string;
+  helperText?: string;
+  maxAmount?: number;
+  decimalScale?: number;
+  requireMethodSelection?: boolean;
 }
-const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen, onClick }) => {
+const AddPaymentDropdownComponent: FC<Props> = ({
+  isOpen,
+  data,
+  onClose,
+  onOpen,
+  onClick,
+  title,
+  helperText,
+  maxAmount,
+  decimalScale,
+  requireMethodSelection
+}) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -34,7 +51,7 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
   ];
 
   const { form, setForm, update } = useForm<PaymentForm>({
-    paymentMethod: data?.paymentMethod ?? PaymentType.cash,
+    paymentMethod: data?.paymentMethod ?? (requireMethodSelection ? undefined : PaymentType.cash),
     paidAmount: data?.paidAmount ?? 0,
     paidAt: data?.paidAt ?? '',
     notes: data?.notes ?? '',
@@ -59,7 +76,7 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
   useEffect(() => {
     if (isOpen) {
       setForm({
-        paymentMethod: data?.paymentMethod ?? PaymentType.cash,
+        paymentMethod: data?.paymentMethod ?? (requireMethodSelection ? undefined : PaymentType.cash),
         paidAmount: data?.paidAmount ?? 0,
         paidAt: data?.paidAt ?? '',
         notes: data?.notes ?? '',
@@ -71,17 +88,20 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
         paymentMethod: false
       });
     }
-  }, [isOpen, data, setForm]);
+  }, [isOpen, data, setForm, requireMethodSelection]);
 
   useEffect(() => {
     const valid =
       typeof form.paidAmount !== 'undefined' &&
+      Number.isFinite(form.paidAmount) &&
+      form.paidAmount > 0 &&
+      (maxAmount === undefined || form.paidAmount <= maxAmount) &&
       typeof form.paymentMethod !== 'undefined' &&
       typeof form.paidAt !== 'undefined' &&
-      form.paidAt !== '';
+      Number.isFinite(parseISO(form.paidAt).getTime());
 
     setIsFormValid(valid);
-  }, [form, errors]);
+  }, [form, errors, maxAmount]);
   return (
     <>
       <SwipeableDrawer
@@ -93,7 +113,8 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
           paper: {
             sx: {
               maxWidth: isDesktop ? '40%' : '100%',
-              height: '30%',
+              maxHeight: '85dvh',
+              height: 'auto',
               mx: 'auto',
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
@@ -106,10 +127,10 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
       >
         <Box sx={{ mb: 2 }}>
           <PageHeader
-            title={t('invoices.addPayment')}
+            title={title ?? t('invoices.addPayment')}
             showBack={false}
             showSave={true}
-            showClose={false}
+            showClose={true}
             formData={form}
             isFormValid={isFormValid}
             onClose={onClose}
@@ -118,6 +139,11 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
             }}
           />
         </Box>
+        {helperText && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {helperText}
+          </Alert>
+        )}
         <Grid container spacing={2}>
           {storeSettings && (
             <Grid size={{ xs: 12, md: 6 }}>
@@ -125,11 +151,11 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
                 fullWidth
                 options={paymentOption}
                 getOptionLabel={option => option.label}
-                disableClearable={true}
-                value={paymentOption.find(opt => opt.value === form.paymentMethod) ?? paymentOption[0]}
+                disableClearable={!requireMethodSelection}
+                value={paymentOption.find(opt => opt.value === form.paymentMethod) ?? null}
                 onChange={(_e, newValue) => {
-                  update('paymentMethod', newValue.value);
-                  validateField('paymentMethod', newValue.value.toString());
+                  update('paymentMethod', newValue?.value);
+                  validateField('paymentMethod', newValue?.value.toString() ?? '');
                 }}
                 renderInput={params => <TextField {...params} label={t('invoices.type')} required />}
                 freeSolo={false}
@@ -139,6 +165,8 @@ const AddPaymentDropdownComponent: FC<Props> = ({ isOpen, data, onClose, onOpen,
           {storeSettings && (
             <Grid size={{ xs: 12, md: 6 }}>
               <AmountInput
+                max={maxAmount}
+                decimalScale={decimalScale}
                 required={true}
                 amountFormat={storeSettings?.amountFormat}
                 label={t('common.amount')}
