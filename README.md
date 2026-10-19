@@ -8,6 +8,8 @@
 ![Windows](https://img.shields.io/badge/Windows-10%2B-blue?logo=windows)
 ![macOS](https://img.shields.io/badge/macOS-DMG-lightgrey?logo=apple&logoColor=white)
 
+**[Install Helium](INSTALL.md)** · [User guide](TUTORIAL.md) · [Releases](https://github.com/djamondaxuzm/invoice-builder-Helium/releases)
+
 **djamondaxuzm's personal Invoice Builder Helium fork.**
 
 Helium has its own atom icon, app title, support links and update feed. Required upstream MIT notices remain in LICENSE.
@@ -127,7 +129,7 @@ If you value **privacy, portability, and control**, this app is built for you.
 ## 🖥️ Supported Platforms
 
 - **Windows:** 10 or newer, 64-bit
-- **macOS:** 11.0 (Big Sur) or newer, Apple Silicon (M1/M2/M3/M4), 64-bit, .dmg installer available
+- **macOS:** DMG builds on a Mac; see the [installation guide](INSTALL.md#build-a-macos-installer) for build and download availability
 - **Memory:** 2 GB RAM minimum (1 GB may work for very small datasets)
 - **Disk space:** ~200 MB for the installer; ~550mb for the app; additional space needed for database files
 
@@ -149,38 +151,9 @@ This makes Invoice Builder flexible for both lightweight personal use and more a
 
 ## 📦 Installation
 
-Installers will be listed on the [GitHub Releases page](https://github.com/djamondaxuzm/invoice-builder-Helium/releases) when published. Changes on main do not automatically create a downloadable installer.
+**[Open the installation guide →](INSTALL.md)** for Windows PowerShell commands, macOS builds, installer locations, upgrades and troubleshooting.
 
-To build Windows locally, install Node.js, clone this repository, then run `npm ci` and `npm run package`. The installer is written to `release/`. Build macOS on a Mac with `npm ci`, `npm run build`, and `npx electron-builder --mac --publish never`.
-
-> ⚠️ **Browser download warning**
->
-> When downloading the app, your browser may show a message like:
->
-> - “This file is from an unknown source”
-> - “This file is rarely downloaded”
->
-> This is normal for newly published apps and does **not** indicate a security issue.  
-> Simply choose **Keep anyway / Save anyway** to proceed with the download.
->
-> 🍎 **macOS Gatekeeper warning**
->
-> Because this app is **unsigned**, macOS may display a message like:
->
-> - “App is damaged and can’t be opened. Move to Trash”
-> - “App is from an unidentified developer”
->
-> This happens because macOS Gatekeeper treats all unsigned apps downloaded from the internet as potentially unsafe.  
-> It adds a special **quarantine flag** to the app bundle, which prevents it from launching.
->
-> To fix this, after downloading and installing it:
->
-> 1. Open **Terminal**.
-> 2. Run the following command:
->
->    ```bash
->     sudo xattr -rd com.apple.quarantine "/Applications/Invoice Builder.app"
->    ```
+Installers will be listed on the [GitHub Releases page](https://github.com/djamondaxuzm/invoice-builder-Helium/releases) when published. Until then, follow the guide to build locally. Changes on `main` do not automatically create a downloadable installer.
 
 ## 🚀 Quick Start
 

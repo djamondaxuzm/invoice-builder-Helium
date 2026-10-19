@@ -1,5 +1,7 @@
 # Invoice Builder Tutorial
 
+For downloads, local builds and upgrades, start with the [installation guide](INSTALL.md).
+
 > 💡 **Note:** The interface is fully responsive and works well on resizable windows, making it suitable for small screens and resizable Windows or macOS windows.
 
 ## Export a billing period

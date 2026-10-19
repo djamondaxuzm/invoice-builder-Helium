@@ -2,6 +2,7 @@
 
 New features & improvements
 
+- Add a dedicated installation guide linked from the README and tutorial, with Windows/macOS build commands, fresh Windows output folders, upgrade steps and troubleshooting.
 - Add a financial dashboard with local date ranges, client/business/currency filters, invoice and actual-payment trends, overdue aging, client comparisons, payment methods/ledger, item sales and CSV export.
 - Add client-first bulk payments with oldest-first allocation, a per-invoice preview, stale-data validation and all-or-nothing persistence.
 - Make Mark as paid collect dated payment details; let legacy Paid invoices add missing history without reopening balances or fabricating dates.
