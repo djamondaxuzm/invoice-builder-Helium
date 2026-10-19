@@ -4,6 +4,7 @@
 - Fit every upload cropper preview to the window without enlarging small images; start with the full image selected, preserve crop coordinates on resize, and provide a full-image reset.
 - Disable saving until an image loads, prevent duplicate crop saves, and report image decoding/export failures.
 - Add a Helium atom icon to the app, browser, Windows installer, Linux and macOS assets.
+- Correct the Electron asset-copy destination so the window icon is packaged where the app loads it.
 - Personalize titles, maintainer metadata, support/repository/update links for djamondaxuzm; remove upstream donation and promotion links while retaining license notices.
 - Keep the existing app ID, executable name and packaged user-data directory for upgrade compatibility. Docker configurations build this fork locally.
 - Includes the preceding invoice performance, linked catalog updates, archive safety and billing-period improvements.
