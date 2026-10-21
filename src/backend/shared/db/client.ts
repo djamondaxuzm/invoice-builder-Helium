@@ -18,6 +18,29 @@ const convertQuestionToDollar = (sql: string) => {
 export const createSqliteAdapter = (db: sqlite3.Database): DatabaseAdapter => {
   return {
     type: DatabaseType.sqlite,
+    withIsolatedConnection: async work => {
+      // Maintenance must not join a concurrent invoice save's transaction.
+      // In-memory adapters are test-only and cannot open the same database twice.
+      const databases = await new Promise<{ name: string; file: string }[]>((resolve, reject) =>
+        db.all('PRAGMA database_list', (error, rows) =>
+          error ? reject(error) : resolve(rows as { name: string; file: string }[])
+        )
+      );
+      const file = databases.find(row => row.name === 'main')?.file;
+      if (!file) return work(createSqliteAdapter(db));
+      const connection = await new Promise<sqlite3.Database>((resolve, reject) => {
+        const opened = new sqlite3.Database(file, sqlite3.OPEN_READWRITE, error =>
+          error ? reject(error) : resolve(opened)
+        );
+      });
+      connection.configure('busyTimeout', 5000);
+      const adapter = createSqliteAdapter(connection);
+      try {
+        return await work(adapter);
+      } finally {
+        await adapter.close();
+      }
+    },
     run: (sql: string, params: unknown[] = [], returningId = false) =>
       new Promise<number>((resolve, reject) => {
         db.run(sql, params, function (err) {
@@ -110,6 +133,14 @@ export const createPostgresAdapter = (connectionString: string): DatabaseAdapter
 
   return {
     type: DatabaseType.postgre,
+    withIsolatedConnection: async work => {
+      const adapter = createPostgresAdapter(connectionString);
+      try {
+        return await work(adapter);
+      } finally {
+        await adapter.close();
+      }
+    },
     run: async (sql: string, params: unknown[] = [], returningId = false) => {
       const isInsert = sql.trim().toUpperCase().startsWith('INSERT');
       const isUpdate = sql.trim().toUpperCase().startsWith('UPDATE');

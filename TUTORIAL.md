@@ -1248,6 +1248,17 @@ Receipt uploads accept images up to 20 MB. Saving an uncropped JPEG no longer tu
 - Files below 128 KB are left unchanged. A replacement must save at least 10%; suitable saved JPEGs are not repeatedly recompressed. If optimization fails, the original remains available.
 - Preview, individual invoice/quote export and billing-period export share the same preparation path. Existing saved receipts get smaller PDF copies without changing their stored data. Image preparation is sequential and cached with size/count limits, and temporary decoded images are released.
 
-To reduce older receipts in the database, open an invoice and choose **Reduce stored attachments** in its attachment section. Review the before/after size and PDF preview, then **save the invoice** to persist the smaller files. Cancel your invoice edits to keep the originals. This replaces only the selected invoice's optimized attachment bytes and matching file metadata; receipt IDs, line items and payment records are retained. Keep a database backup if you need the original-resolution images for archival purposes.
+To reduce **all existing attachments at once**:
 
-SQLite can reuse pages freed by smaller attachments, so the database file's size on disk may not immediately decrease. This action does not run a database-wide rewrite or vacuum. Exporting PDFs alone never reduces stored database bytes. No schema migration is required, and older PNG/JPEG attachments remain readable.
+1. Open **Settings → Attachment storage**. The scan shows the attachment count and total stored bytes for the current database.
+2. Leave **Reclaim unused database space when finished** checked for SQLite if you also want the database file to shrink on disk.
+3. Click **Compress all attachments**. All invoices and quotes are included, even archived records. Smaller images are saved immediately; you do not need to open or save individual invoices.
+4. Review the completed report: files checked/compressed/unchanged, any files skipped because they changed elsewhere, saved attachment bytes, and allocated database size before/after compaction.
+
+The operation loads and processes one image at a time to limit memory usage. **Stop compression** stops before the next image is saved; completed replacements remain saved and the rest remain unchanged. The final SQLite compaction cannot be cancelled once it starts. Keep Helium open until the progress dialog closes.
+
+Already optimized JPEGs, unsupported files and images that cannot be decoded remain unchanged. Each replacement checks the current image bytes and metadata, so concurrent edits/deletions are skipped. Write errors stop the run and display the failure; a compaction failure leaves compressed images saved and reports that disk space was not reclaimed. Refresh and retry after resolving the error. Invoice totals, payments, IDs, attachment links and database schemas are unchanged.
+
+The original per-invoice action remains available: choose **Reduce stored attachments**, review the preview, then **save the invoice** to keep the smaller files. Cancel invoice edits to keep the originals. Keep a database backup if you need original-resolution images for archival purposes.
+
+New uploads and PDF exports optimize automatically, but opening an existing database does not silently rewrite old images. Exporting PDFs alone never reduces stored database bytes. Without the bulk action's space-reclamation step, SQLite retains freed pages for reuse and the file may stay the same size. PostgreSQL manages reclaimed storage separately. No schema migration is required, and older PNG/JPEG attachments remain readable.
