@@ -82,7 +82,7 @@ _Fictional demo data. [Billing-period guide](TUTORIAL.md#export-a-billing-period
 
 ## Your first invoice
 
-**Smaller receipt files:** New attachments are optimized before saving, and PDF exports also prepare smaller copies of older receipts. In an invoice's attachment section, **Reduce stored attachments** shows the savings; save the invoice to keep the smaller images. See [receipt storage and PDF size](TUTORIAL.md#receipt-storage-and-pdf-size) for quality settings and database behavior.
+**Smaller receipt files:** New attachments and PDF exports optimize images automatically. To shrink everything already saved, go to **Settings → Attachment storage → Compress all attachments**. This includes archived invoices and quotes, shows progress and savings, and can reclaim unused SQLite disk space afterward. Individual invoices still offer **Reduce stored attachments**. See [receipt storage and PDF size](TUTORIAL.md#receipt-storage-and-pdf-size) for details.
 
 Create or open a database, check your business and payment details, add a client and catalog items, then create an invoice. Choose its date, line items, and style, save it, and export the PDF. The [user guide](TUTORIAL.md) covers each screen, including quotes, receipts, and customization.
 

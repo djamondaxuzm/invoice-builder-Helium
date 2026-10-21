@@ -30,6 +30,7 @@ import {
   setStyleProfiles
 } from '../../state/pageSlice';
 import { CustomizeInvoice } from './content/CustomizeInvoice';
+import { AttachmentStorage } from './content/AttachmentStorage';
 import { LanguageFormat } from './content/LanguageFormat';
 import { Menu } from './menu/Menu';
 
@@ -222,6 +223,9 @@ export const SettingsPage = () => {
     rightColumn = <NoItem text={t('app.noItems')} />;
   } else {
     switch (currentMenuItem) {
+      case MenuItemSettings.AttachmentStorage:
+        rightColumn = <AttachmentStorage showBack={!isDesktop} onBack={onBack} />;
+        break;
       case MenuItemSettings.Receipt:
         rightColumn = (
           <CustomizeInvoice onCustomizedInvoice={onCustomizedInvoice} showBack={!isDesktop} onBack={onBack} />

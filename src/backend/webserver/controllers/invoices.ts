@@ -1,11 +1,30 @@
 import { type Express, type Request, type Response } from 'express';
 import { InvoiceType } from '../../shared/enums/invoiceType';
 import * as invoicesService from '../../shared/services/invoices';
+import * as attachmentStorage from '../../shared/services/attachmentStorage';
 import { decodeInvoice, encodeResultInvoices } from '../../shared/utils/dataUrlFunctions';
 import { dbInstance } from '../database';
 import { parseFilter, requireDB } from '../utils/functions';
 
 export const initInvoicesController = (app: Express) => {
+  app.get('/api/attachment-storage', requireDB, async (_req: Request, res: Response) => {
+    res.json(await attachmentStorage.getAttachmentManifest(dbInstance!));
+  });
+  app.post('/api/attachment-storage/read', requireDB, async (req: Request, res: Response) => {
+    const result = await attachmentStorage.readStoredAttachment(dbInstance!, req.body);
+    res.json({
+      ...result,
+      data: result.data ? { ...result.data, data: Buffer.from(result.data.data).toString('base64') } : result.data
+    });
+  });
+  app.post('/api/attachment-storage/replace', requireDB, async (req: Request, res: Response) => {
+    const data = typeof req.body?.data === 'string' ? Buffer.from(req.body.data, 'base64') : null;
+    const result = await attachmentStorage.replaceStoredAttachment(dbInstance!, { ...req.body, data });
+    res.json(result);
+  });
+  app.post('/api/attachment-storage/compact', requireDB, async (req: Request, res: Response) => {
+    res.json(await attachmentStorage.compactAttachmentStorage(dbInstance!, req.body?.databaseToken));
+  });
   app.post('/api/invoices/payments/bulk', requireDB, async (req: Request, res: Response) => {
     const result = await invoicesService.recordBulkPayment(dbInstance!, req.body);
     res.status(result.success ? 200 : 409).json(result);

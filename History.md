@@ -451,3 +451,7 @@ Initial release with the following functionality
 - Automatic snapshotting of business, client, item, and currency data for historical accuracy
 
 Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
+
+- Add Settings → Attachment storage to compress every saved receipt across active/archived invoices and quotes, with sequential processing, progress, cancellation, immediate persistence and a savings report. Optionally reclaim unused SQLite space at completion.
+- Use isolated maintenance connections and atomic byte/metadata comparisons to prevent bulk compression from joining invoice-save transactions or overwriting concurrent attachment edits. Preserve originals on failed writes and report compaction failures separately.
+- Reset bulk-payment and attachment-maintenance IPC handlers when switching databases.

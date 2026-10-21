@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { AttachmentReadRequest, AttachmentReplaceRequest } from '../backend/shared/types/attachmentStorage';
 import type { BulkPaymentRequest } from '../backend/shared/utils/paymentAllocation';
 import type { DBInitType } from '../renderer/shared/enums/dbInitType';
 import type { InvoiceType } from '../renderer/shared/enums/invoiceType';
@@ -55,6 +56,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openUrl: (url: string) => ipcRenderer.invoke('open-url', url),
 
   getAllSettings: () => ipcRenderer.invoke('get-all-settings'),
+  getAttachmentManifest: () => ipcRenderer.invoke('get-attachment-manifest'),
+  readStoredAttachment: (request: AttachmentReadRequest) => ipcRenderer.invoke('read-stored-attachment', request),
+  replaceStoredAttachment: (request: AttachmentReplaceRequest) =>
+    ipcRenderer.invoke('replace-stored-attachment', request),
+  compactAttachmentStorage: (token: string) => ipcRenderer.invoke('compact-attachment-storage', token),
   updateSettings: (data: SettingsUpdate) => ipcRenderer.invoke('update-settings', data),
 
   getAllBusinesses: (filter?: FilterData[]) => ipcRenderer.invoke('get-all-businesses', filter),

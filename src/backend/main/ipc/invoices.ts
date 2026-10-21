@@ -1,9 +1,18 @@
 import { ipcMain } from 'electron';
 import * as invoicesService from '../../shared/services/invoices';
+import * as attachmentStorage from '../../shared/services/attachmentStorage';
 import type { DatabaseAdapter } from '../../shared/types/DatabaseAdapter';
 import type { Invoice } from '../../shared/types/invoice';
 
 export const initInvoicesHandlers = (db: DatabaseAdapter) => {
+  ipcMain.handle('get-attachment-manifest', () => attachmentStorage.getAttachmentManifest(db));
+  ipcMain.handle('read-stored-attachment', (_event, request) => attachmentStorage.readStoredAttachment(db, request));
+  ipcMain.handle('replace-stored-attachment', (_event, request) =>
+    attachmentStorage.replaceStoredAttachment(db, request)
+  );
+  ipcMain.handle('compact-attachment-storage', (_event, token) =>
+    attachmentStorage.compactAttachmentStorage(db, token)
+  );
   ipcMain.handle('record-bulk-payment', async (_event, data) => invoicesService.recordBulkPayment(db, data));
   ipcMain.handle('get-next-sequence', async (_event, data) => invoicesService.getNextSequence(db, data));
   ipcMain.handle('get-custom-headers', async (_event, type) => invoicesService.getCustomHeaders(db, type));

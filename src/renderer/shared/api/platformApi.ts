@@ -1,4 +1,12 @@
 import { gzip } from 'pako';
+import type {
+  AttachmentManifest,
+  AttachmentReadRequest,
+  AttachmentReplaceRequest,
+  AttachmentReplacement,
+  StoredAttachment,
+  StorageCompaction
+} from '../../../backend/shared/types/attachmentStorage';
 import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAllocation';
 import type { DatabaseType } from '../enums/databaseType';
 import type { DBInitType } from '../enums/dbInitType';
@@ -232,6 +240,21 @@ export const webApi = () => {
     testConnection: (data: PostgresConfig) => apiPost<Response<unknown>>('/api/databases/test', data),
 
     getAllSettings: () => apiGet<Response<Settings>>('/api/settings'),
+    getAttachmentManifest: () => apiGet<Response<AttachmentManifest>>('/api/attachment-storage'),
+    readStoredAttachment: async (request: AttachmentReadRequest): Promise<Response<StoredAttachment | null>> => {
+      const result = await apiPost<Response<(Omit<StoredAttachment, 'data'> & { data: string }) | null>>(
+        '/api/attachment-storage/read',
+        request
+      );
+      return { ...result, data: result.data ? { ...result.data, data: base64ToBytes(result.data.data) } : result.data };
+    },
+    replaceStoredAttachment: async (request: AttachmentReplaceRequest) =>
+      apiPost<Response<AttachmentReplacement>>('/api/attachment-storage/replace', {
+        ...request,
+        data: await fileToBase64(request.data)
+      }),
+    compactAttachmentStorage: (databaseToken: string) =>
+      apiPost<Response<StorageCompaction>>('/api/attachment-storage/compact', { databaseToken }),
     updateSettings: (data: SettingsUpdate) => apiPut<Response<SettingsUpdate>>('/api/settings', data),
 
     getAllBusinesses: async (filter?: FilterData[]) => {

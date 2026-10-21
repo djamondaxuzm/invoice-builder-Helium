@@ -154,6 +154,14 @@ export const Menu: FC<Props> = ({
     {
       items: [
         {
+          text: 'Attachment storage',
+          description: 'Compress all saved receipts and reclaim database space',
+          icon: <ContentCopyIcon />,
+          isSelected: MenuItemSettings.AttachmentStorage === selectedMenu,
+          isToggle: false,
+          onClick: () => onSelected(MenuItemSettings.AttachmentStorage)
+        },
+        {
           text: t('settingsMenuItems.titles.import'),
           description: t('settingsMenuItems.descriptions.import'),
           icon: <UploadFileIcon />,

@@ -1,4 +1,5 @@
 import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAllocation';
+import type { AttachmentStorageApi } from '../../../backend/shared/types/attachmentStorage';
 import type { Settings, SettingsUpdate } from '../types/settings';
 import type { DatabaseType } from './../enums/databaseType';
 import type { DBInitType } from './../enums/dbInitType';
@@ -23,7 +24,7 @@ import type { ProgressInfo } from './updater';
 
 declare global {
   interface Window {
-    electronAPI: {
+    electronAPI: AttachmentStorageApi & {
       ping: () => void;
 
       getAppVersion: () => Promise<string>;
