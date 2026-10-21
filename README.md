@@ -82,6 +82,8 @@ _Fictional demo data. [Billing-period guide](TUTORIAL.md#export-a-billing-period
 
 ## Your first invoice
 
+**Smaller receipt files:** New attachments are optimized before saving, and PDF exports also prepare smaller copies of older receipts. In an invoice's attachment section, **Reduce stored attachments** shows the savings; save the invoice to keep the smaller images. See [receipt storage and PDF size](TUTORIAL.md#receipt-storage-and-pdf-size) for quality settings and database behavior.
+
 Create or open a database, check your business and payment details, add a client and catalog items, then create an invoice. Choose its date, line items, and style, save it, and export the PDF. The [user guide](TUTORIAL.md) covers each screen, including quotes, receipts, and customization.
 
 **Shared catalog edits affect existing documents.** Changes to linked business/client definitions and catalog item names, units, or prices update existing invoices and quotes too. Archiving an item only removes it from normal catalog selection; existing invoice lines remain intact. Review the [update rules](TUTORIAL.md#invoice-save-and-date-behavior) before changing a shared definition.

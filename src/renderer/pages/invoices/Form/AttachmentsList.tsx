@@ -1,18 +1,79 @@
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
-import { Box, IconButton, ListItemText, Tooltip, Typography } from '@mui/material';
-import { memo, useEffect, useState, type FC } from 'react';
+import { Alert, Box, Button, IconButton, ListItemText, Tooltip, Typography } from '@mui/material';
+import { memo, useEffect, useLayoutEffect, useRef, useState, type FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UploadImage } from '../../../shared/components/inputs/uploadImage/UploadImage';
-import type { AttachmentForm, InvoiceFromData } from '../../../shared/types/invoice';
-import { toDataUrl, toUint8Array } from '../../../shared/utils/dataUrlFunctions';
+import type { AttachmentForm, InvoiceAttachment, InvoiceFromData } from '../../../shared/types/invoice';
+import { toUint8Array } from '../../../shared/utils/dataUrlFunctions';
+import { optimizeStoredAttachment } from '../../../shared/utils/receiptImage';
 
 interface Props {
   invoiceForm?: InvoiceFromData;
   onAttach: (attachment: AttachmentForm) => void;
   onClear: (id: number) => void;
+  onOptimize?: (before: InvoiceAttachment[], after: InvoiceAttachment[]) => void;
 }
-const AttachmentsListComponent: FC<Props> = ({ invoiceForm, onAttach, onClear }) => {
+const displaySize = (bytes: number) =>
+  bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+const AttachmentsListComponent: FC<Props> = ({ invoiceForm, onAttach, onClear, onOptimize }) => {
   const { t } = useTranslation();
+  const [optimizing, setOptimizing] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const currentForm = useRef(invoiceForm);
+  useLayoutEffect(() => {
+    currentForm.current = invoiceForm;
+  }, [invoiceForm]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    setMessage('');
+    setError('');
+  }, [invoiceForm?.id]);
+
+  const reduceStoredAttachments = async () => {
+    if (!onOptimize || optimizing || invoiceForm?.attachmentsLoaded === false) return;
+    const before = invoiceForm?.invoiceAttachments ?? [];
+    const invoiceId = invoiceForm?.id;
+    setOptimizing(true);
+    setMessage('');
+    setError('');
+    try {
+      const after: InvoiceAttachment[] = [];
+      for (const attachment of before) {
+        if (
+          !mounted.current ||
+          currentForm.current?.id !== invoiceId ||
+          currentForm.current?.invoiceAttachments !== before
+        )
+          break;
+        after.push(await optimizeStoredAttachment(attachment));
+      }
+      if (!mounted.current || currentForm.current?.id !== invoiceId) return;
+      if (currentForm.current?.invoiceAttachments !== before) {
+        setMessage('Attachments changed while preparing smaller images. Try again.');
+        return;
+      }
+      const oldBytes = before.reduce((sum, item) => sum + item.data.byteLength, 0);
+      const newBytes = after.reduce((sum, item) => sum + item.data.byteLength, 0);
+      if (newBytes < oldBytes) {
+        onOptimize(before, after);
+        setMessage(
+          `${displaySize(oldBytes)} → ${displaySize(newBytes)} (${Math.round((1 - newBytes / oldBytes) * 100)}% smaller). Save the invoice to keep these smaller attachments, or cancel your edits to keep the originals.`
+        );
+      } else setMessage('No useful size reduction was found. Your attachments were kept unchanged.');
+    } catch (cause) {
+      if (mounted.current && currentForm.current?.id === invoiceId)
+        setError(cause instanceof Error ? cause.message : 'Could not reduce attachments.');
+    } finally {
+      if (mounted.current) setOptimizing(false);
+    }
+  };
 
   const onUpload = async (file?: Blob, filename?: string, id?: number) => {
     if (file && filename) {
@@ -39,17 +100,17 @@ const AttachmentsListComponent: FC<Props> = ({ invoiceForm, onAttach, onClear })
       return;
     }
 
-    (async () => {
-      const list = await Promise.all(
-        attachments.map(async attachment => {
-          const url = attachment.data ? await toDataUrl(attachment.data, attachment.fileType) : undefined;
-
-          return { id: attachment.id as number, url };
-        })
-      );
-
-      setAttachmentUrls(list);
-    })();
+    // Blob URLs avoid base64 copies of every full-size receipt just to show thumbnails.
+    const list = attachments.map(attachment => ({
+      id: attachment.id as number,
+      url: attachment.data?.length
+        ? URL.createObjectURL(new Blob([new Uint8Array(attachment.data).buffer], { type: attachment.fileType }))
+        : undefined
+    }));
+    setAttachmentUrls(list);
+    return () => {
+      for (const item of list) if (item.url) URL.revokeObjectURL(item.url);
+    };
   }, [invoiceForm?.invoiceAttachments]);
 
   return (
@@ -111,8 +172,36 @@ const AttachmentsListComponent: FC<Props> = ({ invoiceForm, onAttach, onClear })
             disableEdit={true}
           />
         ))}
-        <UploadImage onUpload={onUpload} size={100} imgUrl={undefined} alwaysShowAddIcon={true} />
+        <UploadImage
+          onUpload={onUpload}
+          size={100}
+          maxSizeMB={20}
+          receipt
+          imgUrl={undefined}
+          alwaysShowAddIcon={true}
+        />
       </Box>
+      <Typography variant="body2" color="text.secondary">
+        New receipts are optimized before saving. PDF exports also optimize older receipts. Stored attachments:{' '}
+        {displaySize(
+          (invoiceForm?.invoiceAttachments ?? []).reduce(
+            (sum, attachment) => sum + (attachment.data?.byteLength ?? attachment.fileSize),
+            0
+          )
+        )}
+        .
+      </Typography>
+      {onOptimize && Boolean(invoiceForm?.invoiceAttachments?.length) && (
+        <Button
+          size="small"
+          disabled={optimizing || invoiceForm?.attachmentsLoaded === false}
+          onClick={reduceStoredAttachments}
+        >
+          {optimizing ? 'Reducing attachment size…' : 'Reduce stored attachments'}
+        </Button>
+      )}
+      {message && <Alert severity="info">{message}</Alert>}
+      {error && <Alert severity="error">{error}</Alert>}
     </Box>
   );
 };

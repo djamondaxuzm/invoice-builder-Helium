@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import type { Settings } from '../../shared/types/settings';
 import type { buildBillingPeriod } from '../../shared/utils/billingPeriod';
 import { getOptimizedLogoUrl } from '../../shared/utils/logoImage';
+import { getOptimizedReceiptUrl } from '../../shared/utils/receiptImage';
 import { BillingPeriodPDF } from './BillingPeriodPDF';
 
 export const createBillingPeriodPdf = async (period: ReturnType<typeof buildBillingPeriod>, settings: Settings) => {
@@ -12,7 +13,8 @@ export const createBillingPeriodPdf = async (period: ReturnType<typeof buildBill
     if (invoice.attachmentsLoaded === false) throw new Error('Load the complete invoice before exporting receipts.');
     const business = invoice.invoiceBusinessSnapshot;
     const logoUrl = await getOptimizedLogoUrl(business?.businessLogo, business?.businessFileType);
-    const attachments = (invoice.invoiceAttachments ?? []).map(attachment => {
+    const attachments = [];
+    for (const attachment of invoice.invoiceAttachments ?? []) {
       if (!attachment.data?.length || !['image/png', 'image/jpeg', 'image/jpg'].includes(attachment.fileType)) {
         throw new Error(
           'Invoice ' +
@@ -20,19 +22,11 @@ export const createBillingPeriodPdf = async (period: ReturnType<typeof buildBill
             ' has an unreadable or unsupported attachment. Use PNG or JPEG receipt images.'
         );
       }
-      let binary = '';
-      const bytes = new Uint8Array(attachment.data);
-      for (let offset = 0; offset < bytes.length; offset += 8192)
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
-      return {
+      attachments.push({
         name: attachment.fileName,
-        url:
-          'data:' +
-          (attachment.fileType === 'image/jpg' ? 'image/jpeg' : attachment.fileType) +
-          ';base64,' +
-          btoa(binary)
-      };
-    });
+        url: await getOptimizedReceiptUrl(attachment.data, attachment.fileType)
+      });
+    }
     assets.push({ logoUrl, attachments });
   }
   const rendered = await pdf(<BillingPeriodPDF period={period} settings={settings} assets={assets} />).toBlob();

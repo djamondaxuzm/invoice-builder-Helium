@@ -17,6 +17,7 @@ import type {
   DiscountForm,
   InvoiceFromData,
   InvoiceInfo,
+  InvoiceAttachment,
   InvoiceItem,
   ItemForm,
   PaymentForm,
@@ -802,6 +803,23 @@ const InvoiceFormComponent: FC<Props> = ({
     [setInvoiceForm, invoiceForm]
   );
 
+  const handleOptimizeAttachments = useCallback(
+    (before: InvoiceAttachment[], after: InvoiceAttachment[]) => {
+      const replacements = new Map(before.map((attachment, index) => [attachment, after[index]]));
+      setInvoiceForm(current =>
+        !current || current.id !== invoiceForm?.id
+          ? current
+          : {
+              ...current,
+              invoiceAttachments: current?.invoiceAttachments?.map(
+                attachment => replacements.get(attachment) ?? attachment
+              )
+            }
+      );
+    },
+    [invoiceForm?.id, setInvoiceForm]
+  );
+
   const handleOnClickLanguage = useCallback(
     (data: Language) => {
       handleOnClose(setIsDropdownOpenLanguages);
@@ -908,7 +926,12 @@ const InvoiceFormComponent: FC<Props> = ({
 
           <Divider flexItem />
 
-          <AttachmentsList invoiceForm={invoiceForm} onAttach={handleAttachments} onClear={handleRemoveAttachment} />
+          <AttachmentsList
+            invoiceForm={invoiceForm}
+            onAttach={handleAttachments}
+            onClear={handleRemoveAttachment}
+            onOptimize={handleOptimizeAttachments}
+          />
         </>
       )}
 
