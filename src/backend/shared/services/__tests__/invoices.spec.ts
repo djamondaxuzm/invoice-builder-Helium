@@ -396,6 +396,48 @@ describe('receipt persistence and linked definitions', () => {
     expect(await db.all('SELECT id FROM attachments')).toHaveLength(1);
   });
 
+  it('persists an explicitly compressed receipt in place and reloads matching bytes and metadata', async () => {
+    const saved = await add('compressed', {
+      invoiceAttachments: [
+        {
+          fileName: 'receipt.png',
+          fileType: 'image/png',
+          fileSize: 1024,
+          data: new Uint8Array(1024).fill(11)
+        } as Invoice['invoiceAttachments'][number]
+      ]
+    });
+    const originalId = saved.invoiceAttachments[0].id;
+    const smaller = new Uint8Array([255, 216, 255, 217]);
+    const updated = await updateInvoice(db, {
+      ...saved,
+      invoiceAttachments: [
+        {
+          ...saved.invoiceAttachments[0],
+          retainExistingData: false,
+          fileName: 'receipt.jpg',
+          fileType: 'image/jpeg',
+          fileSize: smaller.length,
+          data: smaller
+        }
+      ]
+    });
+    expect(updated.success).toBe(true);
+    const reloaded = (await getAllInvoices(db)).data!.find(row => row.id === saved.id)!;
+    expect(reloaded.invoiceAttachments).toHaveLength(1);
+    expect(reloaded.invoiceAttachments[0]).toMatchObject({
+      id: originalId,
+      parentInvoiceId: saved.id,
+      fileName: 'receipt.jpg',
+      fileType: 'image/jpeg',
+      fileSize: 4
+    });
+    expect(Array.from(reloaded.invoiceAttachments[0].data)).toEqual(Array.from(smaller));
+    expect(reloaded.invoiceItems).toEqual(saved.invoiceItems);
+    expect(reloaded.invoicePayments).toEqual(saved.invoicePayments);
+    expect(reloaded.invoiceNumber).toBe(saved.invoiceNumber);
+  });
+
   it('updates business branding on every linked invoice and quote, including clearing a logo', async () => {
     await add('001');
     await add('002', { invoiceType: InvoiceType.quotation });

@@ -10,6 +10,7 @@ import type { AttachmentURL, InvoiceFromData, PdfTexts } from '../../types/invoi
 import type { Settings } from '../../types/settings';
 import { getOptimizedLogoUrl } from '../../utils/logoImage';
 import { toDataUrl } from '../../utils/dataUrlFunctions';
+import { getOptimizedReceiptUrl } from '../../utils/receiptImage';
 import { usePdfTexts } from '../pdf/usePdfTexts';
 
 export const getAttachmentsUrl = async (invoiceForm?: InvoiceFromData): Promise<AttachmentURL[]> => {
@@ -20,14 +21,11 @@ export const getAttachmentsUrl = async (invoiceForm?: InvoiceFromData): Promise<
     return [];
   }
 
-  const list = await Promise.all(
-    attachments.map(async attachment => {
-      const url = attachment.data ? await toDataUrl(attachment.data, attachment.fileType) : undefined;
-
-      return { id: attachment.id as number, url };
-    })
-  );
-
+  const list: AttachmentURL[] = [];
+  for (const attachment of attachments) {
+    const url = await getOptimizedReceiptUrl(attachment.data, attachment.fileType);
+    list.push({ id: attachment.id as number, url });
+  }
   return list;
 };
 

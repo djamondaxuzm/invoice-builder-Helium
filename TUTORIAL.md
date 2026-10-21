@@ -1231,10 +1231,23 @@ Billing-period PDFs use a consistent invoice layout with a company header, shade
 
 Company logo uploads accept files up to 20 MB. After cropping, PNG/JPEG logos of at least 128 KB are checked for optimization: images are reduced to at most 1024 pixels on the longest edge, preserving their aspect ratio; PNG transparency is retained. A replacement is used only when it is smaller and has the same image type. Small images are not enlarged. Original data is retained when optimization is unsupported or fails. The optimized business logo is used by newly created invoice snapshots.
 
-Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. Logos appear on the invoice pages and final summary. Receipt images retain their original resolution for readability.
+Individual and billing-period PDF exports also optimize old saved logos in memory when browser image APIs are available. Existing invoices and historical logo snapshots are not rewritten. Logos appear on the invoice pages and final summary. Receipt optimization is described below.
 
 Receipt loading and saves (October 2026): Invoice lists load receipt metadata; opening an invoice or exporting selected billing-period invoices loads the full receipts. Failed loads offer Retry and do not open an incomplete editor. Ordinary saves preserve unchanged line rows; insertion/reordering preserves display order. Save receives edits immediately while PDF previews wait 200 ms after typing. Cross-invoice payment/snapshot updates are rejected, and custom fields are stored as JSON once.
 
 ## Upload and crop images in Helium
 
-Uploads open with the entire image selected and fitted to the window. Drag a crop handle to trim it, or choose **Use full image** to reset. Resizing the window preserves the selected area. Saving uses original source pixels, not the smaller preview. The same cropper is used for logos, receipts, signatures, QR codes and watermarks. Business logos keep their proportions in invoice PDFs.
+Uploads open with the entire image selected and fitted to the window. Drag a crop handle to trim it, or choose **Use full image** to reset. Resizing the window preserves the selected area. Cropping uses original source pixels rather than the smaller preview; receipts are then optimized as described below. The same cropper is used for logos, receipts, signatures, QR codes and watermarks. Business logos keep their proportions in invoice PDFs.
+
+## Receipt storage and PDF size
+
+Receipt uploads accept images up to 20 MB. Saving an uncropped JPEG no longer turns it into a much larger PNG. Large receipts are prepared before they are attached to the invoice, so subsequent saves and loads transfer fewer image bytes.
+
+- Opaque receipt photos may become JPEGs at quality 0.86. Simple screenshots use PNG when that is smaller, and transparent images stay PNG.
+- Large images keep their aspect ratio and fit within a 2,000-pixel short edge and six million pixels, with a 16,384-pixel maximum edge for unusually long receipts. Small images are never enlarged. Narrow receipts are not automatically squeezed down to a short fixed height.
+- Files below 128 KB are left unchanged. A replacement must save at least 10%; suitable saved JPEGs are not repeatedly recompressed. If optimization fails, the original remains available.
+- Preview, individual invoice/quote export and billing-period export share the same preparation path. Existing saved receipts get smaller PDF copies without changing their stored data. Image preparation is sequential and cached with size/count limits, and temporary decoded images are released.
+
+To reduce older receipts in the database, open an invoice and choose **Reduce stored attachments** in its attachment section. Review the before/after size and PDF preview, then **save the invoice** to persist the smaller files. Cancel your invoice edits to keep the originals. This replaces only the selected invoice's optimized attachment bytes and matching file metadata; receipt IDs, line items and payment records are retained. Keep a database backup if you need the original-resolution images for archival purposes.
+
+SQLite can reuse pages freed by smaller attachments, so the database file's size on disk may not immediately decrease. This action does not run a database-wide rewrite or vacuum. Exporting PDFs alone never reduces stored database bytes. No schema migration is required, and older PNG/JPEG attachments remain readable.

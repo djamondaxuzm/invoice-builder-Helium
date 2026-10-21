@@ -19,14 +19,24 @@ import ReactCrop, { type PercentCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { toDataUrl } from '../../../utils/dataUrlFunctions';
 import { FULL_IMAGE_CROP, getNaturalCrop } from '../../../utils/imageCrop';
+import { encodeReceiptCanvas, optimizeReceipt, receiptImageSize } from '../../../utils/receiptImage';
 
 interface Props {
   isOpen: boolean;
   onClose?: () => void;
-  onSave?: (url: string, file: Blob) => void;
+  onSave?: (url: string, file: Blob) => void | Promise<void>;
   imageSrc?: string;
+  originalFile?: Blob;
+  receipt?: boolean;
 }
-export const CropModal: React.FC<Props> = ({ onClose = () => {}, imageSrc, isOpen, onSave = () => {} }) => {
+export const CropModal: React.FC<Props> = ({
+  onClose = () => {},
+  imageSrc,
+  originalFile,
+  receipt = false,
+  isOpen,
+  onSave = () => {}
+}) => {
   const { t } = useTranslation();
   const [crop, setCrop] = useState<PercentCrop>({ ...FULL_IMAGE_CROP });
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -45,25 +55,47 @@ export const CropModal: React.FC<Props> = ({ onClose = () => {}, imageSrc, isOpe
     if (!imgRef.current || !ready || saving) return;
     setSaving(true);
     setError('');
+    let canvas: HTMLCanvasElement | undefined;
     try {
       const image = imgRef.current;
       const source = getNaturalCrop(image.naturalWidth, image.naturalHeight, crop);
-      const canvas = document.createElement('canvas');
-      canvas.width = source.width;
-      canvas.height = source.height;
+      if (
+        receipt &&
+        originalFile &&
+        ['image/png', 'image/jpeg', 'image/jpg'].includes(originalFile.type) &&
+        source.x === 0 &&
+        source.y === 0 &&
+        source.width === image.naturalWidth &&
+        source.height === image.naturalHeight
+      ) {
+        const blob = await optimizeReceipt(originalFile);
+        await onSave(await toDataUrl(blob), blob);
+        return;
+      }
+      canvas = document.createElement('canvas');
+      const size = receipt ? receiptImageSize(source.width, source.height) : source;
+      canvas.width = size.width;
+      canvas.height = size.height;
       const ctx = canvas.getContext('2d', { alpha: true });
       if (!ctx) throw new Error('Could not prepare the image. Please retry.');
-      ctx.drawImage(image, source.x, source.y, source.width, source.height, 0, 0, source.width, source.height);
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          result => (result ? resolve(result) : reject(new Error('Could not save the image. Please retry.'))),
-          'image/png'
-        );
-      });
-      onSave(await toDataUrl(blob), blob);
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(image, source.x, source.y, source.width, source.height, 0, 0, canvas.width, canvas.height);
+      const blob = receipt
+        ? await encodeReceiptCanvas(canvas)
+        : await new Promise<Blob>((resolve, reject) => {
+            canvas!.toBlob(
+              result => (result ? resolve(result) : reject(new Error('Could not save the image. Please retry.'))),
+              'image/png'
+            );
+          });
+      await onSave(await toDataUrl(blob), blob);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the image. Please retry.');
     } finally {
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
       setSaving(false);
     }
   };
@@ -103,8 +135,9 @@ export const CropModal: React.FC<Props> = ({ onClose = () => {}, imageSrc, isOpe
         sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minHeight: 0, p: 2 }}
       >
         <Typography variant="body2">
-          Drag the edges to crop, or save the full image. The preview fits your screen; cropping keeps the original
-          resolution.
+          {receipt
+            ? 'Drag the edges to crop, or save the full image. Large receipts are optimized for smaller files; small images are never enlarged.'
+            : 'Drag the edges to crop, or save the full image. The preview fits your screen; cropping keeps the original resolution.'}
         </Typography>
         {error && <Alert severity="error">{error}</Alert>}
         <Box

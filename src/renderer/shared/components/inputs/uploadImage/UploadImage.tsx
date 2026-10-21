@@ -6,17 +6,18 @@ import { useTranslation } from 'react-i18next';
 import 'react-image-crop/dist/ReactCrop.css';
 import { useAppDispatch } from '../../../../state/configureStore';
 import { addToast } from '../../../../state/pageSlice';
-import { toDataUrl } from '../../../utils/dataUrlFunctions';
+import { receiptFileName } from '../../../utils/receiptImage';
 import { CropModal } from '../../modals/cropModal/CropModal';
 
 interface UploadSquareProps {
-  onUpload?: (file?: Blob, filename?: string) => void;
+  onUpload?: (file?: Blob, filename?: string) => void | Promise<void>;
   size?: number;
   maxSizeMB?: number;
   imgUrl?: string;
   alwaysShowAddIcon?: boolean;
   disableEdit?: boolean;
   disableClear?: boolean;
+  receipt?: boolean;
 }
 export const UploadImage: React.FC<UploadSquareProps> = ({
   onUpload,
@@ -25,7 +26,8 @@ export const UploadImage: React.FC<UploadSquareProps> = ({
   imgUrl,
   alwaysShowAddIcon,
   disableEdit,
-  disableClear
+  disableClear,
+  receipt = false
 }) => {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +35,7 @@ export const UploadImage: React.FC<UploadSquareProps> = ({
   const dispatch = useAppDispatch();
   const [originalFileName, setOriginalFileName] = useState<string | undefined>(undefined);
   const [imageSrc, setImageSrc] = useState<string | undefined>(undefined);
+  const [originalFile, setOriginalFile] = useState<File>();
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [croppedImageUrl, setCroppedImageUrl] = useState<string | undefined>(imgUrl);
 
@@ -53,14 +56,20 @@ export const UploadImage: React.FC<UploadSquareProps> = ({
       event.target.value = '';
       dispatch(addToast({ message: t('error.fileTooLarge', { maxSizeMB: maxSizeMB }), severity: 'error' }));
     } else {
-      const url = await toDataUrl(file);
-      setImageSrc(url);
+      setOriginalFile(file);
+      setImageSrc(URL.createObjectURL(file));
       setCropDialogOpen(true);
     }
   };
   useEffect(() => {
     setCroppedImageUrl(imgUrl);
   }, [imgUrl]);
+  useEffect(
+    () => () => {
+      if (imageSrc) URL.revokeObjectURL(imageSrc);
+    },
+    [imageSrc]
+  );
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -139,14 +148,24 @@ export const UploadImage: React.FC<UploadSquareProps> = ({
       <CropModal
         isOpen={cropDialogOpen}
         imageSrc={imageSrc}
+        originalFile={originalFile}
+        receipt={receipt}
         onClose={() => {
           setCropDialogOpen(false);
+          setImageSrc(undefined);
+          setOriginalFile(undefined);
           if (inputRef.current) inputRef.current.value = '';
         }}
-        onSave={(url: string, file: Blob) => {
+        onSave={async (url: string, file: Blob) => {
+          if (onUpload)
+            await onUpload(
+              file,
+              receipt && originalFileName ? receiptFileName(originalFileName, file.type) : originalFileName
+            );
           setCroppedImageUrl(url);
-          if (onUpload) onUpload(file, originalFileName);
           setCropDialogOpen(false);
+          setImageSrc(undefined);
+          setOriginalFile(undefined);
           if (inputRef.current) inputRef.current.value = '';
         }}
       />
