@@ -8,7 +8,7 @@ interface Props {
 
 export const Content: FC<Props> = ({ node, size = 8 }) => {
   return (
-    <Grid size={{ xs: 12, md: size }} component="div" sx={{ height: '100%' }}>
+    <Grid size={{ xs: 12, md: size }} component="div" sx={{ height: '100%', minWidth: 0 }}>
       <Card sx={{ height: '100%', overflow: 'auto' }}>
         <CardContent sx={{ height: '100%' }}>{node}</CardContent>
       </Card>

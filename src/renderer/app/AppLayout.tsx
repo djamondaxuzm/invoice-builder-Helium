@@ -10,7 +10,7 @@ export const AppLayout: FC = () => {
       <Updater />
       <Box sx={{ display: 'flex', height: '100vh' }}>
         <Sidebar />
-        <Box component="main" sx={{ flexGrow: 1, p: 2, overflow: 'auto' }}>
+        <Box component="main" sx={{ flexGrow: 1, minWidth: 0, p: 2, overflow: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

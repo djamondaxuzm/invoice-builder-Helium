@@ -578,9 +578,9 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
           height: '100%',
           boxSizing: 'border-box',
           minWidth: 0,
-          px: 1.5,
+          pr: 2,
           overflowY: 'auto',
-          scrollbarGutter: 'stable both-edges',
+          scrollbarGutter: 'stable',
           '& > *': { flexShrink: 0 }
         }}
       >
@@ -746,7 +746,8 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
       <Grid
         container
         component="div"
-        spacing={2}
+        rowSpacing={2}
+        columnSpacing={0}
         sx={{ height: '100%', justifyContent: 'center', alignItems: 'stretch' }}
       >
         {!showRightSide && leftColumn}

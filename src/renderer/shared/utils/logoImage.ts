@@ -1,5 +1,5 @@
 /** Keep logos sharp at invoice size without embedding camera-sized images. */
-export const optimizeLogo = async (source: Blob): Promise<Blob> => {
+export const optimizeLogo = async (source: Blob, maxEdge = 1024): Promise<Blob> => {
   if (
     !['image/png', 'image/jpeg'].includes(source.type) ||
     source.size < 128 * 1024 ||
@@ -11,7 +11,7 @@ export const optimizeLogo = async (source: Blob): Promise<Blob> => {
   let canvas: HTMLCanvasElement | undefined;
   try {
     bitmap = await createImageBitmap(source);
-    const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
     canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -38,7 +38,9 @@ export const optimizeLogo = async (source: Blob): Promise<Blob> => {
 /** Also optimize old saved logos for export, without rewriting historical invoices. */
 export const getOptimizedLogoUrl = async (bytes?: Uint8Array, mimeType = 'image/png') => {
   if (!bytes?.length) return undefined;
-  const blob = await optimizeLogo(new Blob([new Uint8Array(bytes).buffer], { type: mimeType || 'image/png' }));
+  // The largest printed logo is 80 pt: 384 pixels retains over 300 DPI.
+  // Upload/storage optimization keeps its separate 1024-pixel budget.
+  const blob = await optimizeLogo(new Blob([new Uint8Array(bytes).buffer], { type: mimeType || 'image/png' }), 384);
   const data = new Uint8Array(await blob.arrayBuffer());
   let binary = '';
   for (let offset = 0; offset < data.length; offset += 8192) {
