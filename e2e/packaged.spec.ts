@@ -21,9 +21,9 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
     const runtime = await app.evaluate(({ app, BrowserWindow }) => {
       BrowserWindow.getAllWindows().forEach(window => window.hide());
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const fs = require('node:fs');
+      const fs = globalThis.process.getBuiltinModule('fs');
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const path = require('node:path');
+      const path = globalThis.process.getBuiltinModule('path');
       const root = app.getAppPath();
       return {
         packaged: app.isPackaged,
