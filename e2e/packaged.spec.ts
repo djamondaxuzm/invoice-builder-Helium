@@ -20,9 +20,7 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
   try {
     const runtime = await app.evaluate(({ app, BrowserWindow }) => {
       BrowserWindow.getAllWindows().forEach(window => window.hide());
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fs = globalThis.process.getBuiltinModule('fs');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const path = globalThis.process.getBuiltinModule('path');
       const root = app.getAppPath();
       return {
@@ -61,17 +59,23 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
       const clients = await api.getAllClients();
       const settings = await api.getAllSettings();
       const layouts = await api.getAllLayouts();
-      const saved = await api.addClient({ name: 'Packaging smoke test', shortName: 'PackageTest', isArchived: false });
+      const saved = await api.addClient({ name: 'Packaging smoke test', shortName: 'PT', isArchived: false });
       return {
         invoices: invoices.success,
         invoiceCount: invoices.data?.length,
         clients: clients.success,
         settings: settings.success,
         layouts: layouts.success,
-        saved: saved.success
+        saved
       };
     }, InvoiceType.invoice);
-    expect(result).toMatchObject({ invoices: true, clients: true, settings: true, layouts: true, saved: true });
+    expect(result).toMatchObject({
+      invoices: true,
+      clients: true,
+      settings: true,
+      layouts: true,
+      saved: { success: true }
+    });
     await testInfo.attach('database-check', { body: JSON.stringify(result), contentType: 'application/json' });
 
     // Exercise the actual database chooser and renderer using a deterministic file dialog.
@@ -83,7 +87,7 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
     await page.getByText('Invoices', { exact: true }).first().click();
     await expect(page.getByRole('button', { name: 'Billing period / payments' })).toBeVisible();
     const clients = await page.evaluate(() => window.electronAPI.getAllClients());
-    expect(clients.data?.some(client => client.shortName === 'PackageTest')).toBe(true);
+    expect(clients.data?.some(client => client.shortName === 'PT')).toBe(true);
     expect(errors).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('packaged-invoices.png') });
   } finally {
