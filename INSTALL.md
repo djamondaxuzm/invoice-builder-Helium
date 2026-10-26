@@ -91,4 +91,4 @@ The compiled renderer and backend already contain their JavaScript libraries. Th
 
 The installer builder always compiles the current source, keeps Electron/installer caches, uses a fresh output directory to avoid locked-folder failures, and reports completion only after a Setup EXE or DMG exists. Initial dependency and tool downloads still need an internet connection.
 
-For a packaged-app regression check, build first and set `HELIUM_PACKAGED_EXE` to the executable inside `win-unpacked` (or the macOS app bundle), then run `npm run test:packaged`. The test uses a separate profile and test database. Windows CI runs this check automatically.
+For a packaged-app regression check, build first and set `HELIUM_PACKAGED_EXE` to the executable inside `win-unpacked` (or the macOS app bundle), then run `npm run test:packaged`. The test uses a separate profile and test database. Windows and macOS CI run this check automatically.
