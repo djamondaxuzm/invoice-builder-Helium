@@ -114,7 +114,7 @@ describe('database-wide attachment storage', () => {
     edited[200] = 99;
     await db.run('UPDATE attachments SET data=? WHERE id=1', [edited]);
     expect((await replaceStoredAttachment(db, request)).data!.updated).toBe(false);
-    expect((await db.get('SELECT data FROM attachments WHERE id=1'))!.data).toEqual(edited);
+    expect((await db.get<{ data: Buffer }>('SELECT data FROM attachments WHERE id=1'))!.data.equals(edited)).toBe(true);
   });
   it('skips deleted attachments and refuses requests from another database connection', async () => {
     const request = await requestFor();
@@ -150,7 +150,9 @@ describe('database-wide attachment storage', () => {
       "CREATE TRIGGER reject_attachment_write BEFORE UPDATE ON attachments BEGIN SELECT RAISE(ABORT, 'simulated disk failure'); END"
     );
     expect((await replaceStoredAttachment(db, request)).success).toBe(false);
-    expect((await db.get('SELECT data FROM attachments WHERE id=1'))!.data).toEqual(original);
+    expect((await db.get<{ data: Buffer }>('SELECT data FROM attachments WHERE id=1'))!.data.equals(original)).toBe(
+      true
+    );
   });
   it('uses an isolated connection so an unrelated invoice rollback cannot undo a reported save', async () => {
     const request = await requestFor();
