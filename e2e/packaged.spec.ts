@@ -19,7 +19,11 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
   const app = await electron.launch({ executablePath, args: ['--user-data-dir=' + profile] });
   try {
     const runtime = await app.evaluate(({ app, BrowserWindow }) => {
-      BrowserWindow.getAllWindows().forEach(window => window.hide());
+      BrowserWindow.getAllWindows().forEach(window => {
+        // Keep animation frames running for Playwright's click stability checks while hidden.
+        window.webContents.setBackgroundThrottling(false);
+        window.hide();
+      });
       const fs = globalThis.process.getBuiltinModule('fs');
       const path = globalThis.process.getBuiltinModule('path');
       const root = app.getAppPath();
