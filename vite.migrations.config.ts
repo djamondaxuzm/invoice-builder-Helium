@@ -16,6 +16,7 @@ export default defineConfig(() => {
 
   return {
     build: {
+      license: true,
       outDir: path.resolve(__dirname, 'dist-be', 'backend', 'migrations'),
       target: 'node20',
       lib: {

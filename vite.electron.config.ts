@@ -9,6 +9,7 @@ export default defineConfig({
     exclude: ['@electron-webauthn/native', 'electron-webauthn']
   },
   build: {
+    license: true,
     outDir: 'dist-be/backend/main',
     target: 'node20',
     lib: {
