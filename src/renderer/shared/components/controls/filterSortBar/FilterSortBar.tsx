@@ -33,11 +33,16 @@ export const FilterSortBar = <T extends string | number | symbol, TItem>({
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Box></Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography>{t('common.sortBy')}:</Typography>
-          <Select size="small" value={activeSortBy.value} onChange={onSortByChange}>
+      <Box sx={{ minWidth: 0, maxWidth: '100%', ml: 'auto' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 1 }}>
+          <Typography sx={{ whiteSpace: 'nowrap' }}>{t('common.sortBy')}:</Typography>
+          <Select
+            size="small"
+            value={activeSortBy.value}
+            onChange={onSortByChange}
+            sx={{ minWidth: 0, maxWidth: '100%' }}
+            inputProps={{ 'aria-label': t('common.sortBy') }}
+          >
             {sortByOptions.map(item => (
               <MenuItem key={item.value.toString()} value={item.value.toString()}>
                 {item.label}
@@ -61,7 +66,7 @@ export const FilterSortBar = <T extends string | number | symbol, TItem>({
           )}
           {activeSort === SortType.DESC && (
             <Tooltip title={t('ariaLabel.descending')}>
-              <IconButton aria-label={t('ariaLabel.ascending')} onClick={() => onSortChange(SortType.ASC)}>
+              <IconButton aria-label={t('ariaLabel.descending')} onClick={() => onSortChange(SortType.ASC)}>
                 <ArrowDownwardIcon />
               </IconButton>
             </Tooltip>

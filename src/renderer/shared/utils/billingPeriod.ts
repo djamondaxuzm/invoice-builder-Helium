@@ -83,9 +83,21 @@ export const buildBillingPeriod = (invoices: Invoice[], settings: Settings) => {
       const total = Math.round(financial.totalAmount * currency.currencySubunit);
       const recordedPaid = Math.round(financial.totalAmountPaid * currency.currencySubunit);
       const paid = invoice.status === InvoiceStatus.paid ? Math.max(total, recordedPaid) : recordedPaid;
-      if (!Number.isSafeInteger(total) || !Number.isSafeInteger(paid))
+      const balance = total - paid;
+      if (!Number.isSafeInteger(total) || !Number.isSafeInteger(paid) || !Number.isSafeInteger(balance))
         throw new Error('An invoice has an invalid amount.');
-      return { invoice, financial, total, paid };
+      // Include legacy paid invoices without inventing payment dates or ledger entries.
+      const paymentStatus =
+        balance < 0
+          ? 'CREDIT'
+          : balance === 0
+            ? total === 0 && paid === 0
+              ? 'NO BALANCE DUE'
+              : 'PAID IN FULL'
+            : paid > 0
+              ? 'PARTIALLY PAID'
+              : 'UNPAID';
+      return { invoice, financial, total, paid, balance, paymentStatus };
     });
   const total = rows.reduce((sum, row) => sum + row.total, 0);
   const paid = rows.reduce((sum, row) => sum + row.paid, 0);

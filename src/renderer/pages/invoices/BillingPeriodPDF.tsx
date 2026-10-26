@@ -54,6 +54,7 @@ const theme = (invoice: Invoice) => {
 };
 const cell = { padding: 6, fontSize: 10 };
 const widths = ['52%', '8%', '8%', '15%', '17%'];
+const summaryWidths = ['22%', '21%', '19%', '19%', '19%'];
 
 export const BillingPeriodPDF = ({
   period,
@@ -157,7 +158,7 @@ export const BillingPeriodPDF = ({
   );
   return (
     <Document title={`Billing period ${from} to ${to}`}>
-      {period.rows.flatMap(({ invoice, financial, total }, rowIndex) => {
+      {period.rows.flatMap(({ invoice, financial, total, paid, balance, paymentStatus }, rowIndex) => {
         const branding = assets[rowIndex];
         const invoiceNumber = number(invoice);
         const invoiceTheme = theme(invoice);
@@ -172,6 +173,9 @@ export const BillingPeriodPDF = ({
               <>
                 <Text>{invoiceNumber}</Text>
                 <Text>Date: {formatDate(invoice.issuedAt, settings.dateFormat)}</Text>
+                <Text style={{ marginTop: 5, fontSize: 10, fontWeight: 700, color: invoiceTheme.accent }}>
+                  {paymentStatus}
+                </Text>
               </>,
               branding?.logoUrl ?? (rowIndex === 0 ? logoUrl : undefined)
             )}
@@ -241,9 +245,11 @@ export const BillingPeriodPDF = ({
                 </>
               )}
               {totalLine(
-                `Invoice ${invoiceNumber} subtotal${financial.totalTax !== 0 ? ' (incl. tax)' : ''}`,
+                `Invoice ${invoiceNumber} total${financial.totalTax !== 0 ? ' (incl. tax)' : ''}`,
                 money(total)
               )}
+              {totalLine('Paid / settled', money(paid))}
+              {totalLine(balance < 0 ? 'Credit balance' : 'Balance due', money(Math.abs(balance)), true)}
               <Text style={{ textAlign: 'right', color: '#777777', fontSize: 8, marginTop: 3 }}>
                 This invoice only; included in the final combined summary.
               </Text>
@@ -305,14 +311,14 @@ export const BillingPeriodPDF = ({
             assets[0]?.logoUrl ?? logoUrl
           )}
           <View style={{ flexDirection: 'row', backgroundColor: firstTheme.tint }}>
-            {['Invoice', 'Date', 'Invoice subtotal (incl. tax)'].map((label, i) => (
+            {['Invoice / status', 'Date', 'Total billed', 'Paid / settled', 'Balance due'].map((label, i) => (
               <Text
                 key={label}
                 style={{
                   ...cell,
-                  width: ['25%', '25%', '50%'][i],
+                  width: summaryWidths[i],
                   fontWeight: 700,
-                  textAlign: i === 2 ? 'right' : 'left'
+                  textAlign: i >= 2 ? 'right' : 'left'
                 }}
               >
                 {label}
@@ -325,17 +331,28 @@ export const BillingPeriodPDF = ({
               wrap={false}
               style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#cccccc', paddingVertical: 3 }}
             >
-              <Text style={{ ...cell, width: '25%', color: '#555555' }}>{numbers[i]}</Text>
-              <Text style={{ ...cell, width: '25%', color: '#555555' }}>
+              <View style={{ ...cell, width: summaryWidths[0], color: '#555555' }}>
+                <Text>{numbers[i]}</Text>
+                <Text style={{ fontSize: 7, marginTop: 3 }}>{row.paymentStatus}</Text>
+              </View>
+              <Text style={{ ...cell, width: summaryWidths[1], color: '#555555' }}>
                 {formatDate(row.invoice.issuedAt, settings.dateFormat)}
               </Text>
-              <Text style={{ ...cell, width: '50%', textAlign: 'right', color: '#555555' }}>{money(row.total)}</Text>
+              {[row.total, row.paid, row.balance].map((amount, column) => (
+                <Text
+                  key={column}
+                  style={{ ...cell, width: summaryWidths[column + 2], textAlign: 'right', color: '#555555' }}
+                >
+                  {money(amount)}
+                </Text>
+              ))}
             </View>
           ))}
           <Text style={{ marginTop: 12, fontSize: 9, color: '#555555' }}>
-            Each invoice subtotal contributes to the final combined total below.
+            Balance due = total billed minus paid / settled. Negative balances are credits. Invoices previously marked
+            paid are included as settled, even when payment details were not recorded.
           </Text>
-          <View wrap={false} style={{ marginTop: 60 }}>
+          <View wrap={false} style={{ marginTop: 24 }}>
             {totalLine('Charges before tax', money(beforeTax))}
             {totalLine('Tax', money(tax))}
             {totalLine('Total billed', money(period.total))}
@@ -349,17 +366,25 @@ export const BillingPeriodPDF = ({
                 padding: 14
               }}
             >
-              <Text style={{ color: firstTheme.accent, fontWeight: 700, fontSize: 12 }}>FINAL TOTAL</Text>
+              <Text style={{ color: firstTheme.accent, fontWeight: 700, fontSize: 12 }}>
+                {period.balance < 0 ? 'CREDIT BALANCE' : period.balance === 0 ? 'PAID IN FULL' : 'BALANCE DUE'}
+              </Text>
               <View
                 style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}
               >
                 <Text style={{ color: '#555555', width: '55%' }}>
-                  {period.balance < 0 ? 'Credit balance' : 'Balance due'} for all {period.rows.length} invoices
+                  {period.balance === 0 ? (
+                    'No payment is due for these invoices.'
+                  ) : (
+                    <>
+                      {period.balance < 0 ? 'Credit balance' : 'Balance due'} for all {period.rows.length} invoices
+                    </>
+                  )}
                 </Text>
                 <Text
                   style={{ color: firstTheme.accent, fontWeight: 700, fontSize: 25, textAlign: 'right', width: '45%' }}
                 >
-                  {money(period.balance)}
+                  {money(Math.abs(period.balance))}
                 </Text>
               </View>
             </View>

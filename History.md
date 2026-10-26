@@ -13,6 +13,8 @@ New features & improvements
 
 Bug Fixes
 
+- Show paid/settled amounts, payment status and remaining balance on every billing-period invoice and summary row. Clearly label the combined amount as Balance due, Paid in full or Credit balance; preserve legacy paid invoices and overpayment credits without changing saved payments.
+- Align list actions, search and invoice cards with equal side padding and reserved scrollbar space. Keep controls from shrinking vertically and allow filters/sorting to wrap at narrow widths.
 - Stop converting every uploaded JPEG receipt to a full-resolution PNG. Keep suitable JPEGs unchanged, keep MIME types and filenames consistent, and send replacement bytes when explicitly reducing a saved receipt instead of retaining its old database blob.
 - Reconcile report totals with an invoice ledger/CSV, end current-period presets today, exclude future payments from received cash, and accumulate chart amounts in integer minor units. Prevent legacy contact snapshots from duplicating or hiding invoice rows; tolerate absent optional charges in older data.
 - Include the whole final local day and matching currency snapshots in reporting. Keep invoice issue dates separate from payment dates, retain currency selection, and preserve the prior range when custom selection is canceled.

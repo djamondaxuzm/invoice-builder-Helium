@@ -79,7 +79,7 @@ export const GenericList = <T extends { id: number }>({
             : theme.palette.background.paper,
         color: theme.palette.text.primary,
         transition: 'all 0.2s ease-in-out',
-        minWidth: '250px'
+        minWidth: 0
       }}
     >
       <ListItemButton

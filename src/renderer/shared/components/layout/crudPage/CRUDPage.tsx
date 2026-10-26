@@ -564,8 +564,26 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
   }
 
   const leftColumn = (
-    <Grid size={{ xs: 12, md: showRightSide ? 4 : 12 }} component="div" sx={{ position: 'relative', height: '100%' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, height: '100%', overflow: 'auto' }}>
+    <Grid
+      size={{ xs: 12, md: showRightSide ? 4 : 12 }}
+      component="div"
+      sx={{ position: 'relative', height: '100%', minWidth: 0 }}
+    >
+      <Box
+        data-testid="crud-list-panel"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          height: '100%',
+          boxSizing: 'border-box',
+          minWidth: 0,
+          px: 1.5,
+          overflowY: 'auto',
+          scrollbarGutter: 'stable both-edges',
+          '& > *': { flexShrink: 0 }
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {leftTitle && (
             <Typography
@@ -605,7 +623,8 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
             sx={{
               display: 'flex',
               flexDirection: 'row',
-              gap: 3,
+              gap: 1,
+              flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}
@@ -628,6 +647,7 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
                 display: 'flex',
                 flexDirection: 'row',
                 gap: 1,
+                flexWrap: 'wrap',
                 alignItems: 'center'
               }}
             >
