@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true
     },
     build: {
+      license: true,
       outDir: path.resolve(__dirname, 'dist-fe'),
       chunkSizeWarningLimit: 1500
     },

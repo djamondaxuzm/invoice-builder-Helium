@@ -14,7 +14,6 @@ files:
   - dist-fe/**
   - dist-be/**
   - "!dist-be/backend/server/**"
-  - node_modules/**
   - package.json
   - LICENSE
   - LICENSE-DISCLAIMER.md

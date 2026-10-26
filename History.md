@@ -2,6 +2,8 @@
 
 New features & improvements
 
+- Package compiled JavaScript libraries once, keeping only the SQLite runtime dependency tree outside the bundles. On Windows, the app archive shrank from 219,472,452 to 36,478,545 bytes and separate dependency files from 53,142 to 852. Preserve bundled license notices, existing app identity, database migrations, updater code and macOS support.
+- Add a shared installer command with fresh output folders, separate compilation/packaging timings, full installer paths and a build-metrics report. Add Windows installer creation and Windows/macOS packaged-app SQLite smoke checks to CI.
 - Resize large PDF logo copies to a 384-pixel edge (over 300 DPI at the largest printed size), preserve transparency/aspect ratios, and reuse repeated images across pages. A four-page billing-period export using the same saved invoices dropped from 3,786,666 to 350,320 bytes (90.7% smaller) with identical extracted text; stored originals remain unchanged.
 - Optimize receipt uploads before storage and older receipts during invoice/quote previews and individual/billing-period PDF exports. Choose smaller JPEG/PNG encodings, preserve transparency and aspect ratios, and bound image dimensions and preparation caches.
 - Add Reduce stored attachments with before/after sizes and explicit invoice-save behavior; retain existing receipt IDs and metadata compatibility. Use revocable Blob URLs for upload previews and receipt thumbnails instead of large base64 copies.

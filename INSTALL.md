@@ -41,22 +41,13 @@ Run this from the repository folder containing `package.json`:
 $ErrorActionPreference = 'Stop'
 npm.cmd ci
 if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed. Read the error above.' }
-npm.cmd run build
-if ($LASTEXITCODE -ne 0) { throw 'Application build failed. Read the error above.' }
-
-$buildId = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
-$installerDir = Join-Path (Get-Location).Path "release\$buildId"
-node .\node_modules\electron-builder\cli.js --win --x64 --publish never "--config.directories.output=$installerDir"
-if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed. Read the error above.' }
-
-Get-ChildItem -LiteralPath $installerDir -Filter '*.exe' | Select-Object FullName, Length
-Write-Host "Installer saved in $installerDir"
-Start-Process explorer.exe -ArgumentList ('"' + $installerDir + '"')
+npm.cmd run package
+if ($LASTEXITCODE -ne 0) { throw 'Installer build failed. Read the error above.' }
 ```
 
-The first build downloads Electron and packaging tools and can take several minutes. Wait for **Installer saved in ...** and the Explorer window; a `.yml` file appearing does not mean the build is finished.
+The first build downloads Electron and packaging tools and can take several minutes. Wait for **Installer build complete** and the **INSTALLER:** file path; a `.yml` file appearing does not mean the build is finished.
 
-Each build uses a fresh folder under `release`, for example `release\20261018-153000-a1b2c3d4`. In the folder that opens, run the **Setup `.exe`** after closing Helium. These commands build locally and do not upload a release.
+Each build uses a fresh folder under `release` and prints the full Setup file path. Run that **Setup `.exe`** after closing Helium. These commands build locally and do not upload a release. For another build with the same dependency files, run only `npm.cmd run package`; rerun `npm.cmd ci` when `package.json` or `package-lock.json` changes. Compilation and packaging times are printed separately and saved as `build-metrics.json` beside the installer.
 
 ## Build a macOS installer
 
@@ -71,10 +62,7 @@ git clone https://github.com/djamondaxuzm/invoice-builder-Helium.git && cd invoi
 After that succeeds, run:
 
 ```bash
-installer_dir="$PWD/release/$(date +%Y%m%d-%H%M%S)-$$"
-npm ci && npm run build && \
-  npx electron-builder --mac --publish never --config.directories.output="$installer_dir" && \
-  open "$installer_dir"
+npm ci && npm run package:mac
 ```
 
 Open the generated `.dmg`, then drag Invoice Builder Helium into Applications. A local build is not automatically signed or notarized; those require separate signing credentials and release configuration.
@@ -96,3 +84,11 @@ The installer and your invoice database are separate. Installing a new version d
 - **Windows or macOS reports an unknown publisher:** Local builds may be unsigned. Confirm where the installer came from and review the warning; an unknown-publisher message alone does not verify that a file is safe.
 
 For a failed build, include the first error and your operating system in a [GitHub issue](https://github.com/djamondaxuzm/invoice-builder-Helium/issues). For everyday use after installation, see the [tutorial](TUTORIAL.md).
+
+## Packaging checks
+
+The compiled renderer and backend already contain their JavaScript libraries. Those libraries stay available as build dependencies; only SQLite and its native runtime dependency tree are packaged separately. No application features, database migrations or macOS targets are removed. Bundled dependency license notices ship with the compiled outputs.
+
+The installer builder always compiles the current source, keeps Electron/installer caches, uses a fresh output directory to avoid locked-folder failures, and reports completion only after a Setup EXE or DMG exists. Initial dependency and tool downloads still need an internet connection.
+
+For a packaged-app regression check, build first and set `HELIUM_PACKAGED_EXE` to the executable inside `win-unpacked` (or the macOS app bundle), then run `npm run test:packaged`. The test uses a separate profile and test database. Windows and macOS CI run this check automatically.

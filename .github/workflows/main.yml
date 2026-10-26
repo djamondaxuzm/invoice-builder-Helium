@@ -25,8 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build migrations
-        run: npm run build:migrations
+      - name: Build Windows installer
+        run: npm run package
 
       - name: Run tests
         run: npm run test -- --run --maxWorkers=1
@@ -36,3 +36,41 @@ jobs:
 
       - name: Run Prettier
         run: npm run format
+
+      - name: Locate packaged executable
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release -Recurse -File -Filter 'Invoice Builder.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Packaged executable is missing.' }
+          "HELIUM_PACKAGED_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Test packaged app
+        run: npm run test:packaged
+
+      - name: Upload tested Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: helium-windows-installer
+          path: |
+            release/*/*.exe
+            release/*/build-metrics.json
+          compression-level: 0
+          retention-days: 7
+
+  mac-package-smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder --mac --dir --publish never
+      - name: Locate macOS executable
+        run: |
+          exe=$(find release -path '*/Contents/MacOS/*' -type f ! -path '*/Frameworks/*' ! -path '*/Library/*' | head -n 1)
+          test -n "$exe"
+          echo "HELIUM_PACKAGED_EXE=$PWD/$exe" >> "$GITHUB_ENV"
+      - run: npm run test:packaged
