@@ -1,3 +1,4 @@
+import '../../shared/utils/pdfRuntime';
 import { pdf } from '@react-pdf/renderer';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import type { Settings } from '../../shared/types/settings';

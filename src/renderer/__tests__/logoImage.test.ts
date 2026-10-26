@@ -78,10 +78,11 @@ describe('logo optimization', () => {
     expect(await optimizeLogo(original)).toBe(original);
   });
   it('exports optimized saved bytes with matching MIME type without mutating the snapshot', async () => {
-    setup(new Blob(['small'], { type: 'image/png' }));
+    const { dimensions } = setup(new Blob(['small'], { type: 'image/png' }));
     const original = new Uint8Array(500000);
     expect(await getOptimizedLogoUrl(original, 'image/png')).toBe('data:image/png;base64,c21hbGw=');
     expect(original.byteLength).toBe(500000);
+    expect(dimensions).toEqual([384, 192]);
     expect(await getOptimizedLogoUrl()).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@
 
 New features & improvements
 
+- Resize large PDF logo copies to a 384-pixel edge (over 300 DPI at the largest printed size), preserve transparency/aspect ratios, and reuse repeated images across pages. A four-page billing-period export using the same saved invoices dropped from 3,786,666 to 350,320 bytes (90.7% smaller) with identical extracted text; stored originals remain unchanged.
 - Optimize receipt uploads before storage and older receipts during invoice/quote previews and individual/billing-period PDF exports. Choose smaller JPEG/PNG encodings, preserve transparency and aspect ratios, and bound image dimensions and preparation caches.
 - Add Reduce stored attachments with before/after sizes and explicit invoice-save behavior; retain existing receipt IDs and metadata compatibility. Use revocable Blob URLs for upload previews and receipt thumbnails instead of large base64 copies.
 - Refresh the GitHub landing page with Helium branding, prominent Windows/macOS install links, current feature and workflow guides, and new dashboard/billing-period screenshots using fictional data. Clarify release availability, reporting rules and linked catalog updates; remove stale release badges and support claims.
@@ -13,6 +14,8 @@ New features & improvements
 
 Bug Fixes
 
+- Fix the browser Buffer runtime error that prevented React PDF from assigning image cache keys, causing duplicate logo embeddings. Cover individual and billing-period exports with a real-browser PDF regression.
+- Remove the artificial left scrollbar gutter and the gap between the list scrollbar and detail pane. Keep equal 16-pixel card spacing beside navigation and scrollbar, with the floating Add button unchanged. Verify the real app layout with native scrollbars, expanded/collapsed navigation, dark/light themes and narrow windows.
 - Show paid/settled amounts, payment status and remaining balance on every billing-period invoice and summary row. Clearly label the combined amount as Balance due, Paid in full or Credit balance; preserve legacy paid invoices and overpayment credits without changing saved payments.
 - Align list actions, search and invoice cards with equal side padding and reserved scrollbar space. Keep controls from shrinking vertically and allow filters/sorting to wrap at narrow widths.
 - Stop converting every uploaded JPEG receipt to a full-resolution PNG. Keep suitable JPEGs unchanged, keep MIME types and filenames consistent, and send replacement bytes when explicitly reducing a saved receipt instead of retaining its old database blob.

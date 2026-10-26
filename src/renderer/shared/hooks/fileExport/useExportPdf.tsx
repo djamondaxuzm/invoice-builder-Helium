@@ -1,3 +1,4 @@
+import '../../utils/pdfRuntime';
 import { pdf } from '@react-pdf/renderer';
 import { parseISO } from 'date-fns';
 import { useCallback, useMemo } from 'react';
