@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { createBrowserRouter, createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
@@ -27,6 +27,7 @@ import { InvoiceType } from './shared/enums/invoiceType';
 import { store } from './state/configureStore';
 
 const mockEnabled = import.meta.env.VITE_ENABLE_MOCKS;
+const ContractsPage = lazy(() => import('./pages/contracts').then(module => ({ default: module.ContractsPage })));
 
 const createRouter = () => {
   const routes = [
@@ -50,6 +51,14 @@ const createRouter = () => {
         { path: 'layouts', element: <LayoutsPage /> },
         { path: 'invoices', element: <InvoicesPage type={InvoiceType.invoice} /> },
         { path: 'quotes', element: <QuotesPage /> },
+        {
+          path: 'contracts',
+          element: (
+            <Suspense fallback={<p>Loading contracts…</p>}>
+              <ContractsPage />
+            </Suspense>
+          )
+        },
         { path: 'reports', element: <ReportsPage /> },
         { path: 'banks', element: <BanksPage /> },
         { path: 'presets', element: <PresetsPage /> },

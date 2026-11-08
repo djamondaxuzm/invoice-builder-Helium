@@ -62,7 +62,7 @@ const BusinessSelectorComponent: FC<Props> = ({ data, onEdit, isRequired = true 
               variant="body1"
               sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('businesses.title').toUpperCase()} {isRequired ? '*' : ''}
+              {t('businesses.title')} {isRequired ? '*' : ''}
             </Typography>
           }
           secondary={

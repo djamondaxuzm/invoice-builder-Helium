@@ -127,7 +127,7 @@ const NotesSelectorComponent: FC<Props> = ({
                       textOverflow: 'ellipsis'
                     }}
                   >
-                    {note.label.toUpperCase()}
+                    {note.label}
                   </Typography>
                 </Box>
               }

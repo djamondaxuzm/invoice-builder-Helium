@@ -36,24 +36,26 @@ export const PageHeader: FC<Props> = ({
   const theme = useTheme();
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, minWidth: 0 }}>
       {showBack && (
         <Tooltip title={t('ariaLabel.back')}>
-          <IconButton onClick={onBack} aria-label={t('ariaLabel.back')} sx={{ color: theme.palette.secondary.main }}>
+          <IconButton onClick={onBack} aria-label={t('ariaLabel.back')} sx={{ color: theme.palette.text.secondary }}>
             <ArrowBackIcon fontSize="medium" />
           </IconButton>
         </Tooltip>
       )}
 
       {title && (
-        <Typography variant="h5" noWrap component="div" sx={{ color: theme.palette.secondary.main }}>
+        <Typography variant="h5" component="h2" sx={{ color: theme.palette.text.primary, overflowWrap: 'anywhere' }}>
           {title}
         </Typography>
       )}
 
       <Box sx={{ flexGrow: 1 }} />
 
-      {showCustom && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{renderCustomButtons()}</Box>}
+      {showCustom && (
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>{renderCustomButtons()}</Box>
+      )}
 
       {showSave && (
         <Tooltip
@@ -65,7 +67,7 @@ export const PageHeader: FC<Props> = ({
           <Box>
             <Button
               autoFocus
-              color="inherit"
+              variant="contained"
               onClick={() => {
                 if (formData !== undefined) onSave(formData);
               }}
@@ -79,7 +81,7 @@ export const PageHeader: FC<Props> = ({
 
       {showClose && (
         <Tooltip title={t('ariaLabel.back')}>
-          <IconButton onClick={onClose} aria-label={t('ariaLabel.back')} sx={{ color: theme.palette.secondary.main }}>
+          <IconButton onClick={onClose} aria-label={t('ariaLabel.back')} sx={{ color: theme.palette.text.secondary }}>
             <CloseOutlined fontSize="medium" />
           </IconButton>
         </Tooltip>

@@ -44,7 +44,7 @@ const ItemSelectorComponent: FC<Props> = ({ onEdit }) => {
                 }}
               >
                 <AddIcon />
-                {t('invoices.addItem').toUpperCase()} *
+                {t('invoices.addItem')} *
               </Typography>
             </>
           }

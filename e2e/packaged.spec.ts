@@ -1,10 +1,12 @@
 import { _electron as electron, expect, test } from '@playwright/test';
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import process from 'node:process';
 import { DatabaseType } from '../src/renderer/shared/enums/databaseType';
 import { DBInitType } from '../src/renderer/shared/enums/dbInitType';
 import { InvoiceType } from '../src/renderer/shared/enums/invoiceType';
+import { newContractDraft } from '../src/backend/shared/utils/contracts';
+import { PDFDocument } from 'pdf-lib';
 
 // Playwright requires an object fixture argument before testInfo.
 // eslint-disable-next-line no-empty-pattern
@@ -92,8 +94,86 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
     await expect(page.getByRole('button', { name: 'Billing period / payments' })).toBeVisible();
     const clients = await page.evaluate(() => window.electronAPI.getAllClients());
     expect(clients.data?.some(client => client.shortName === 'PT')).toBe(true);
+
+    const contract = {
+      ...newContractDraft('2026-11-08'),
+      title: 'Packaged contract check',
+      client: { sourceId: 1, name: 'Example client', address: '', email: '', phone: '' },
+      business: { sourceId: 1, name: 'Example business', address: '', email: '', phone: '' },
+      rates: [{ sourceId: 1, name: 'Standard labor', hourlyRate: '85' }],
+      assessmentRate: { sourceId: 1, name: 'Standard labor', hourlyRate: '85' }
+    };
+    const savedContract = await page.evaluate(draft => window.electronAPI.saveContract({ draft }), contract);
+    expect(savedContract.success).toBe(true);
+    const template = await page.evaluate(() => window.electronAPI.getContractTermsTemplate());
+    expect(template.success).toBe(true);
+    await page.getByText('Contracts', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Open contract', exact: true }).first().click();
+    await expect(page.getByLabel('Project title', { exact: true })).toHaveValue(contract.title);
+    await page.getByRole('button', { name: 'Project-specific details', exact: true }).click();
+    await page
+      .getByLabel('Agreed work and materials', { exact: true })
+      .fill('Agreed work and materials for the project.');
+    await page.getByLabel('Approximate start', { exact: true }).fill('2026-11-10');
+    await page.getByLabel('Approximate completion', { exact: true }).fill('2026-11-20');
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(page.getByText('Contract saved.', { exact: true })).toBeVisible();
+    const reopened = await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id);
+    expect(reopened.data?.draft.projectDetails?.approximateCompletion).toBe('2026-11-20');
+    expect(reopened.data?.draft.standardTerms).toContain('signed by both parties');
+    expect(reopened.data?.draft.retainer).toEqual(contract.retainer);
+    expect(reopened.data?.draft.billableTimeTerms).toContain('no separate warning is required');
+    expect(reopened.data?.draft.paymentTerms).toContain('non-compounding late charge of 1.5%');
+    expect(reopened.data?.draft.arbitration).toEqual(contract.arbitration);
+    expect(template.data?.terms.arbitration).toEqual(contract.arbitration);
+
+    const pdfPath = testInfo.outputPath('contract-draft.pdf');
+    await app.evaluate(({ BrowserWindow }, output) => {
+      Object.assign(globalThis, { heliumContractDownload: 'waiting' });
+      BrowserWindow.getAllWindows()[0].webContents.session.once('will-download', (_event, item) => {
+        item.setSavePath(output);
+        item.once('done', (_event, state) => Object.assign(globalThis, { heliumContractDownload: state }));
+      });
+    }, pdfPath);
+    await page.getByRole('tab', { name: 'Review', exact: true }).click();
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Contract document preview' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Review', exact: true })).toBeHidden();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.getByRole('tab', { name: 'Review', exact: true })).toBeVisible();
+    await expect(page.getByText('Review contract', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await expect(page.getByText('ARBITRATION OF DISPUTES', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Upfront retainer: \$500\.00/)).toBeVisible();
+    await page.getByRole('button', { name: 'Export draft PDF', exact: true }).click();
+    await expect
+      .poll(
+        () =>
+          app.evaluate(
+            () => (globalThis as typeof globalThis & { heliumContractDownload: string }).heliumContractDownload
+          ),
+        { timeout: 30000 }
+      )
+      .toBe('completed');
+    const pdf = await PDFDocument.load(readFileSync(pdfPath));
+    expect(pdf.getPageCount()).toBeGreaterThanOrEqual(2);
+    expect(pdf.getPage(0).getWidth()).toBe(612);
+    await testInfo.attach('contract-draft', { path: pdfPath, contentType: 'application/pdf' });
     expect(errors).toEqual([]);
-    await page.screenshot({ path: testInfo.outputPath('packaged-invoices.png') });
+    await page.screenshot({ path: testInfo.outputPath('packaged-contract.png') });
+    await page.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    const deletion = page.getByRole('dialog', { name: 'Delete contract?', exact: true });
+    await expect(deletion.getByText(contract.title, { exact: true })).toBeVisible();
+    await expect(deletion.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+    await deletion.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(deletion).not.toBeVisible();
+    expect((await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id)).success).toBe(true);
+    await page.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    await deletion.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    await expect(page.getByText('Contract deleted.', { exact: true })).toBeVisible();
+    expect((await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id)).success).toBe(false);
+    expect(existsSync(pdfPath)).toBe(true);
+    expect(errors).toEqual([]);
   } finally {
     await app.close();
   }

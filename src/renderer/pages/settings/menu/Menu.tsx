@@ -269,7 +269,7 @@ export const Menu: FC<Props> = ({
             noWrap
             component="div"
             sx={{
-              color: theme.palette.secondary.main
+              color: theme.palette.text.primary
             }}
           >
             {t('menuItems.settings')}

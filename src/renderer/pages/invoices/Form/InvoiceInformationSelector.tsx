@@ -41,10 +41,7 @@ const InvoiceInformationSelectorComponent: FC<Props> = ({ type, invoiceForm, onE
               variant="body1"
               sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {type === InvoiceType.quotation
-                ? t('invoices.quoteInfo').toUpperCase()
-                : t('invoices.invoiceInfo').toUpperCase()}{' '}
-              *
+              {type === InvoiceType.quotation ? t('invoices.quoteInfo') : t('invoices.invoiceInfo')} *
             </Typography>
           }
           secondary={

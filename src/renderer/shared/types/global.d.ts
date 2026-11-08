@@ -1,5 +1,12 @@
 import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAllocation';
 import type { AttachmentStorageApi } from '../../../backend/shared/types/attachmentStorage';
+import type {
+  ContractSummary,
+  DeleteContractRequest,
+  SavedContract,
+  SaveContractRequest,
+  ContractTermsTemplate
+} from '../../../backend/shared/types/contracts';
 import type { Settings, SettingsUpdate } from '../types/settings';
 import type { DatabaseType } from './../enums/databaseType';
 import type { DBInitType } from './../enums/dbInitType';
@@ -70,6 +77,12 @@ declare global {
       exportLayout: (id: number) => Promise<Response<ExportMeta>>;
 
       getAllClients: (filter?: FilterData[]) => Promise<Response<Client[]>>;
+      listContracts: (clientId?: number) => Promise<Response<ContractSummary[]>>;
+      getContract: (id: number) => Promise<Response<SavedContract>>;
+      saveContract: (request: SaveContractRequest) => Promise<Response<SavedContract>>;
+      deleteContract: (request: DeleteContractRequest) => Promise<Response<{ id: number }>>;
+      getContractTermsTemplate: () => Promise<Response<ContractTermsTemplate>>;
+      saveContractTermsTemplate: (request: ContractTermsTemplate) => Promise<Response<ContractTermsTemplate>>;
       updateClient: (data: ClientUpdate) => Promise<Response<Client>>;
       deleteClient: (id: number) => Promise<Response<unknown>>;
       addClient: (data: ClientAdd) => Promise<Response<Client>>;

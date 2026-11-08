@@ -14,23 +14,24 @@ export const SearchInput: React.FC<SearchInputProps> = ({ value, onChange }) => 
 
   return (
     <Paper
-      elevation={2}
+      variant="outlined"
       sx={{
-        borderRadius: 1,
+        borderRadius: '8px',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
         p: '2px 4px',
         bgcolor: theme.palette.background.paper,
         color: theme.palette.text.primary,
-        minHeight: 50
+        minHeight: 48,
+        '&:focus-within': { borderColor: 'primary.main' }
       }}
     >
       <IconButton type="submit" sx={{ p: '10px' }} aria-label={t('ariaLabel.search')}>
         <SearchIcon />
       </IconButton>
       <InputBase
-        sx={{ ml: 1, flex: 1 }}
+        sx={{ ml: 1, flex: 1, minWidth: 0 }}
         placeholder={t('common.search')}
         value={value}
         onChange={e => {

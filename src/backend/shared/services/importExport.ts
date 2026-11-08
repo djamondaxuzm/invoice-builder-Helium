@@ -53,6 +53,8 @@ export const exportAllData = async (db: DatabaseAdapter) => {
     const invoiceSequences = await db.all<Bank>('SELECT * FROM invoice_sequences');
     const banks = await db.all<Bank>('SELECT * FROM banks');
     const layouts = await db.all<Layout>('SELECT * FROM layouts');
+    const contracts = await db.all('SELECT * FROM contracts');
+    const contractTermsTemplates = await db.all('SELECT * FROM contract_terms_templates');
     const styleProfiles = await db.all<StyleProfile>('SELECT * FROM style_profiles');
     const settingsRow = await db.get('SELECT * FROM settings LIMIT 1');
     const businesses = await db.all<Business>('SELECT * FROM businesses');
@@ -97,6 +99,8 @@ export const exportAllData = async (db: DatabaseAdapter) => {
       categories,
       currencies,
       layouts,
+      contracts,
+      contractTermsTemplates,
       invoices: invoicesModified,
       invoiceBankSnapshots: invoiceBankSnapshotsModified,
       invoiceBusinessSnapshots: invoiceBusinessSnapshotsModified,
@@ -186,6 +190,8 @@ export const importAllData = async (db: DatabaseAdapter, parsed: Record<string, 
 
     await runInTransaction(async () => {
       const deleteOrder = [
+        'contracts',
+        'contract_terms_templates',
         'presets',
         'invoice_sequences',
         'invoice_style_profile_snapshots',
@@ -215,6 +221,8 @@ export const importAllData = async (db: DatabaseAdapter, parsed: Record<string, 
       }
 
       const tableDataMap: Record<string, string> = {
+        contracts: 'contracts',
+        contract_terms_templates: 'contractTermsTemplates',
         currencies: 'currencies',
         units: 'units',
         categories: 'categories',

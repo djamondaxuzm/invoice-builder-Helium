@@ -8,9 +8,10 @@ import { InvoiceFormMode } from '../../../shared/enums/invoiceFormMode';
 interface EditPreviewToggleProps {
   mode: InvoiceFormMode;
   setMode: (m: InvoiceFormMode) => void;
+  disabled?: boolean;
 }
 
-export const EditPreviewToggle: React.FC<EditPreviewToggleProps> = ({ mode, setMode }) => {
+export const EditPreviewToggle: React.FC<EditPreviewToggleProps> = ({ mode, setMode, disabled = false }) => {
   const { t } = useTranslation();
 
   const handleMode = (_event: React.MouseEvent<HTMLElement>, newMode: InvoiceFormMode | null) => {
@@ -22,6 +23,7 @@ export const EditPreviewToggle: React.FC<EditPreviewToggleProps> = ({ mode, setM
       <ToggleButtonGroup
         value={mode}
         exclusive
+        disabled={disabled}
         onChange={handleMode}
         size="small"
         aria-label={t('ariaLabel.editPreview')}

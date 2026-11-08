@@ -63,7 +63,9 @@ export const Header = (props: Props) => {
   ];
   return (
     <>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2 }}>
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}
+      >
         <Typography variant="h5">{t('reports.title')}</Typography>
         <Button startIcon={<RefreshIcon />} disabled={props.loading} onClick={props.onRefresh}>
           {t('reports.refresh')}

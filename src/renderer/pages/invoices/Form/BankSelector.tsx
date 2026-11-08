@@ -32,7 +32,7 @@ const BankSelectorComponent: FC<Props> = ({ name, onEdit, onClear }) => {
                 variant="body1"
                 sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
               >
-                {t('common.bank').toUpperCase()}
+                {t('common.bank')}
               </Typography>
             }
             secondary={

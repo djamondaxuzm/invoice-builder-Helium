@@ -17,11 +17,16 @@ export const NoItem: FC<Props> = ({ text, node, icon = <GridView color="action" 
         justifyContent: 'center',
         height: '100%',
         flexDirection: 'column',
-        gap: 2
+        gap: 2,
+        p: 3,
+        textAlign: 'center',
+        minWidth: 0
       }}
     >
       {icon}
-      <Typography variant="h5">{text}</Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, overflowWrap: 'anywhere' }}>
+        {text}
+      </Typography>
       {node}
     </Box>
   );

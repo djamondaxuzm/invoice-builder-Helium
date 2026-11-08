@@ -7,6 +7,7 @@ import type { DatabaseAdapter } from '../types/DatabaseAdapter';
 import type { PostgresConfig } from '../types/postgresConfig';
 import { getColumnType, getDefaultValue, insertOrIgnore } from '../utils/dbHelper';
 import { createPostgresAdapter, createSqliteAdapter } from './client';
+import { createContractsSchema } from './contractsSchema';
 
 const sanitizeDatabaseName = (database: string): string => {
   if (typeof database !== 'string' || database.trim().length === 0) {
@@ -377,6 +378,7 @@ export const initSchema = async (db: DatabaseAdapter): Promise<void> => {
     await db.run(`CREATE INDEX IF NOT EXISTS idx_invoices_invoiceNumber ON invoices("invoiceNumber")`);
     await db.run(`CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices("status")`);
     await db.run(`CREATE INDEX IF NOT EXISTS idx_invoices_issuedAt ON invoices("issuedAt")`);
+    await createContractsSchema(db);
     await db.run('COMMIT');
   } catch {
     try {

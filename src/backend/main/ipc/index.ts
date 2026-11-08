@@ -5,6 +5,7 @@ import { initBanksHandlers } from './banks';
 import { initBusinessesHandlers } from './businesses';
 import { initCategoriesHandlers } from './categories';
 import { initClientsHandlers } from './clients';
+import { initContractsHandlers } from './contracts';
 import { initCurrenciesHandlers } from './currencies';
 import { initImportExportHandlers } from './importExport';
 import { initInvoicesHandlers } from './invoices';
@@ -28,6 +29,7 @@ export const initIpcHandler = (db: DatabaseAdapter, mainWindow: BrowserWindow) =
   initStyleProfilesHandlers(db);
   initCategoriesHandlers(db);
   initClientsHandlers(db);
+  initContractsHandlers(db);
   initCurrenciesHandlers(db);
   initImportExportHandlers(db);
   initLayoutsHandlers(db);

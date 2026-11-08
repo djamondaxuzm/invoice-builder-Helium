@@ -1,5 +1,12 @@
 import { gzip } from 'pako';
 import type {
+  ContractSummary,
+  SavedContract,
+  SaveContractRequest,
+  DeleteContractRequest,
+  ContractTermsTemplate
+} from '../../../backend/shared/types/contracts';
+import type {
   AttachmentManifest,
   AttachmentReadRequest,
   AttachmentReplaceRequest,
@@ -357,6 +364,18 @@ export const webApi = () => {
 
     getAllClients: (filter?: FilterData[]) =>
       apiGet<Response<Client[]>>('/api/clients', filter?.length ? { filter: JSON.stringify(filter) } : undefined),
+    listContracts: (clientId?: number) =>
+      apiGet<Response<ContractSummary[]>>(
+        '/api/contracts',
+        clientId === undefined ? undefined : { clientId: String(clientId) }
+      ),
+    getContract: (id: number) => apiGet<Response<SavedContract>>(`/api/contracts/${id}`),
+    saveContract: (request: SaveContractRequest) => apiPost<Response<SavedContract>>('/api/contracts', request),
+    deleteContract: (request: DeleteContractRequest) =>
+      apiDelete<Response<{ id: number }>>(`/api/contracts/${request.id}?revision=${request.revision}`),
+    getContractTermsTemplate: () => apiGet<Response<ContractTermsTemplate>>('/api/contract-terms-template'),
+    saveContractTermsTemplate: (request: ContractTermsTemplate) =>
+      apiPut<Response<ContractTermsTemplate>>('/api/contract-terms-template', request),
     addClient: (data: ClientAdd) => apiPost<Response<Client>>('/api/clients', data),
     updateClient: (data: ClientUpdate) => apiPut<Response<Client>>('/api/clients', data),
     deleteClient: (id: number) => apiDelete<Response<unknown>>(`/api/clients/${id}`),

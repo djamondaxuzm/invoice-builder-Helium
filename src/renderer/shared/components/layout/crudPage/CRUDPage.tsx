@@ -591,7 +591,7 @@ export const CRUDPage = <T, TAdd, TUpdate>(props: Props<T, TAdd, TUpdate>) => {
               noWrap
               component="div"
               sx={{
-                color: theme.palette.secondary.main
+                color: theme.palette.text.primary
               }}
             >
               {leftTitle}

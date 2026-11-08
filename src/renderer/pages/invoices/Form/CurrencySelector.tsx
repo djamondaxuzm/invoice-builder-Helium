@@ -27,7 +27,7 @@ const CurrencySelectorComponent: FC<Props> = ({ data, onEdit, isRequired = true 
               variant="body1"
               sx={{ fontWeight: 600, color: theme.palette.primary.main, overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('common.currency').toUpperCase()} {isRequired ? '*' : ''}
+              {t('common.currency')} {isRequired ? '*' : ''}
             </Typography>
           }
           secondary={

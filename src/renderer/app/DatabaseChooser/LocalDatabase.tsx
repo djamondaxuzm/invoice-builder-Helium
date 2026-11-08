@@ -178,7 +178,7 @@ export const LocalDatabase: FC<Props> = ({ onDatabaseRead }) => {
         </>
       )}
 
-      <Typography variant="h5" noWrap component="div" sx={{ color: theme.palette.secondary.main }}>
+      <Typography variant="h5" component="h2" sx={{ color: theme.palette.text.primary }}>
         {!isWebMode() && <>{t('databaseChooser.title')}</>}
         {isWebMode() && <>{t('databaseChooser.titleWeb')}</>}
       </Typography>

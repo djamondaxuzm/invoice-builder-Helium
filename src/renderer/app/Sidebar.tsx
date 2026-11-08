@@ -18,6 +18,7 @@ import ColorLensIcon from '@mui/icons-material/ColorLens';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import DrawIcon from '@mui/icons-material/Draw';
 import ScaleIcon from '@mui/icons-material/Scale';
 import ViewModule from '@mui/icons-material/ViewModule';
 import { Box, Divider, Drawer, IconButton, Tooltip, Typography } from '@mui/material';
@@ -106,7 +107,16 @@ export const Sidebar: FC = () => {
                 onClick: onClickNavigate
               }
             ]
-          : [])
+          : []),
+        {
+          text: 'Contracts',
+          icon: <DrawIcon />,
+          path: '/contracts',
+          isToggle: false,
+          minHeight: 50,
+          isSelected: isSelected,
+          onClick: onClickNavigate
+        }
       ]
     },
 
@@ -333,7 +343,12 @@ export const Sidebar: FC = () => {
       <Box sx={{ p: 2 }}>
         <Divider />
         {open && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <Typography
+            variant="caption"
+            component="div"
+            color="text.secondary"
+            sx={{ mt: 1, textAlign: 'center', overflowWrap: 'anywhere' }}
+          >
             {t(`app.version`)}: {version}
           </Typography>
         )}
