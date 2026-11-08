@@ -1,7 +1,11 @@
 import { Document, Font, Image, Page, Text, View } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { ContractDraft } from '../../../backend/shared/types/contracts';
-import { contractFeeCents, CONTRACT_ESTIMATE_TERMS } from '../../../backend/shared/utils/contracts';
+import {
+  contractFeeCents,
+  contractRetainerCents,
+  CONTRACT_ESTIMATE_TERMS
+} from '../../../backend/shared/utils/contracts';
 import RobotoRegular from '../../assets/roboto/Roboto-Regular.ttf';
 import RobotoBold from '../../assets/roboto/Roboto-Bold.ttf';
 import InterRegular from '../../assets/inter/Inter_18pt-Regular.ttf';
@@ -43,7 +47,7 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
   );
   const heading = (title: string) => (
     <Text
-      minPresenceAhead={28}
+      minPresenceAhead={60}
       style={{ color, fontWeight: 700, fontSize: fontSize + 1, marginTop: 13, marginBottom: 8 }}
     >
       {title}
@@ -72,6 +76,22 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
   return (
     <Document title={draft.title + ' - Work and billing agreement'} author={draft.business?.name}>
       <Page size={draft.style.pageFormat} style={pageStyle}>
+        <Text
+          fixed
+          style={{
+            position: 'absolute',
+            top: 20,
+            left: 44,
+            right: 44,
+            fontSize: 9,
+            color: '#606860',
+            maxLines: 1,
+            textOverflow: 'ellipsis'
+          }}
+          render={({ pageNumber }) =>
+            pageNumber > 1 ? `${draft.client?.name} | ${draft.title} | ${dateLabel(draft.date)}` : ''
+          }
+        />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 20, marginBottom: 20 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color, fontWeight: 700, fontSize: 16, marginBottom: 5 }}>{draft.business?.name}</Text>
@@ -100,7 +120,7 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
           <Text>{dateLabel(draft.date)}</Text>
         </View>
         {section(
-          'Project / scope',
+          'Project',
           <>
             {paragraph(draft.scope)}
             {draft.projectAddress && paragraph(draft.projectAddress)}
@@ -115,7 +135,7 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
           </>
         )}
         {section(
-          'Labor rates',
+          'Rates & billable time',
           <View>
             <View
               wrap={false}
@@ -136,47 +156,60 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
                 <Text style={{ width: '25%', textAlign: 'right' }}>{money(rate.hourlyRate, '0.5')} / hr</Text>
               </View>
             ))}
-            <Text style={{ marginTop: 7, fontSize: 10 }}>
-              Work travel rates exclude ordinary commuting to and from the worksite.
-            </Text>
+            {draft.billableTimeTerms ? (
+              <View style={{ marginTop: 10 }}>{paragraph(draft.billableTimeTerms)}</View>
+            ) : (
+              <Text style={{ marginTop: 7, fontSize: 10 }}>
+                Work travel rates exclude ordinary commuting to and from the worksite.
+              </Text>
+            )}
           </View>
         )}
-        {section(
-          'Assessment & quoting fee',
+        <View>
           <View wrap={false}>
-            <Text style={{ fontWeight: 700, marginBottom: 5 }}>
+            {heading('Charges & payment')}
+            <Text style={{ marginBottom: 8 }}>
+              <Text style={{ fontWeight: 700 }}>Assessment &amp; quoting: </Text>
               {draft.assessmentRate?.name} ({money(draft.assessmentRate!.hourlyRate)}) x {draft.assessmentMultiplier} ={' '}
-              {money(draft.assessmentRate!.hourlyRate, draft.assessmentMultiplier)}
+              {money(draft.assessmentRate!.hourlyRate, draft.assessmentMultiplier)}. Included on the first invoice.
             </Text>
-            {paragraph('This fee is included on the first invoice.')}
+          </View>
+          {draft.quotedAmount !== null &&
+            paragraph(`Estimated project cost: ${money(draft.quotedAmount)}. ${CONTRACT_ESTIMATE_TERMS}`)}
+          {draft.retainer && (
+            <View>
+              <Text minPresenceAhead={28} style={{ fontWeight: 700, marginBottom: 4 }}>
+                Upfront retainer: {money(String(contractRetainerCents(draft) / 100))}
+                {draft.quotedAmount === null ? ' (no estimate given).' : ' (10% of the estimate, capped at $1,000).'}
+              </Text>
+              {paragraph(draft.retainer.terms)}
+            </View>
+          )}
+          {paragraph(draft.materialsTerms)}
+          {draft.billingSchedule && paragraph(draft.billingSchedule)}
+          {paragraph(draft.paymentTerms)}
+          {draft.standardTerms && paragraph(draft.standardTerms)}
+          {draft.additionalTerms && paragraph(draft.additionalTerms)}
+        </View>
+        {draft.arbitration && (
+          <View break>
+            <Text style={{ fontSize: Math.max(12, fontSize), fontWeight: 700, marginBottom: 10 }}>
+              ARBITRATION OF DISPUTES
+            </Text>
+            <Text style={{ fontSize: Math.max(10, fontSize - 1), fontWeight: 700, marginBottom: 10 }}>
+              {draft.arbitration.terms.toUpperCase()}
+            </Text>
+            <View wrap={false}>
+              <Text style={{ fontSize: Math.max(10, fontSize - 1), fontWeight: 700, marginBottom: 18 }}>
+                {draft.arbitration.notice.toUpperCase()}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', fontSize: 10 }}>
+                <Text>Business initials: ______________</Text>
+                <Text>Client initials: ______________</Text>
+              </View>
+            </View>
           </View>
         )}
-        {draft.quotedAmount !== null &&
-          section(
-            'Estimated project cost',
-            <>
-              {paragraph(money(draft.quotedAmount))}
-              {paragraph(CONTRACT_ESTIMATE_TERMS)}
-            </>
-          )}
-        {section(
-          'Materials & payment',
-          <>
-            {paragraph(draft.materialsTerms)}
-            {draft.billingSchedule && paragraph(draft.billingSchedule)}
-            {paragraph(draft.paymentTerms)}
-          </>
-        )}
-      </Page>
-      <Page size={draft.style.pageFormat} style={{ ...pageStyle, paddingTop: 110 }}>
-        <View fixed style={{ position: 'absolute', top: 40, left: 44, right: 44 }}>
-          <Text style={{ color, fontSize: 23, marginBottom: 10 }}>Terms &amp; signatures</Text>
-          <Text style={{ fontSize: 10, color: '#606860', maxLines: 2, textOverflow: 'ellipsis' }}>
-            {draft.client?.name} | {draft.title} | {dateLabel(draft.date)}
-          </Text>
-        </View>
-        {section('Standard terms', paragraph(draft.standardTerms))}
-        {draft.additionalTerms && section('Additional project terms', paragraph(draft.additionalTerms))}
         <View wrap={false} style={{ marginTop: 20 }}>
           {heading('Acceptance')}
           {paragraph('The parties acknowledge the scope, rates, and billing terms stated in this agreement.')}

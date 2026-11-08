@@ -44,6 +44,10 @@ export interface ContractDraft {
   assessmentMultiplier: string;
   /** Optional estimate, not a fixed price. Retain the field name for saved-draft compatibility. */
   quotedAmount: string | null;
+  /** Optional fields keep previously saved agreements unchanged. */
+  billableTimeTerms?: string;
+  retainer?: { policy: 'estimate-ten-percent-capped-v1'; terms: string } | null;
+  arbitration?: { terms: string; notice: string } | null;
   billingSchedule: string;
   paymentTerms: string;
   materialsTerms: string;
@@ -76,7 +80,7 @@ export interface SaveContractRequest {
 
 export type ContractTerms = Pick<
   ContractDraft,
-  'billingSchedule' | 'paymentTerms' | 'materialsTerms' | 'standardTerms'
+  'billingSchedule' | 'paymentTerms' | 'materialsTerms' | 'standardTerms' | 'billableTimeTerms' | 'arbitration'
 >;
 
 export interface ContractTermsTemplate {

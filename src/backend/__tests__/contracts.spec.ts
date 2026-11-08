@@ -13,7 +13,7 @@ import {
 } from '../shared/services/contracts';
 import { exportAllData, importAllData } from '../shared/services/importExport';
 import type { DatabaseAdapter } from '../shared/types/DatabaseAdapter';
-import { contractFeeCents, newContractDraft } from '../shared/utils/contracts';
+import { contractFeeCents, contractRetainerCents, newContractDraft } from '../shared/utils/contracts';
 
 describe('contract drafts', () => {
   let db: DatabaseAdapter;
@@ -41,6 +41,60 @@ describe('contract drafts', () => {
     for (const multiplier of ['-1', '', 'NaN', 'Infinity', '1e3', '10001', '0.12345']) {
       expect(() => contractFeeCents('85', multiplier)).toThrow();
     }
+  });
+
+  it('calculates the automatic retainer without confusing an absent estimate with zero, and caps at $1,000', () => {
+    for (const [estimate, cents] of [
+      [null, 50000],
+      ['0', 0],
+      ['2500', 25000],
+      ['7500', 75000],
+      ['10000', 100000],
+      ['25000', 100000],
+      ['1234.56', 12346],
+      ['0.05', 1]
+    ] as const) {
+      expect(contractRetainerCents({ quotedAmount: estimate })).toBe(cents);
+    }
+    for (const estimate of ['', '-100', 'NaN', '1e3'])
+      expect(() => contractRetainerCents({ quotedAmount: estimate })).toThrow();
+  });
+
+  it('retains new billing wording and retainer terms while preserving legacy drafts and templates', async () => {
+    const legacy = draft();
+    delete legacy.billableTimeTerms;
+    delete legacy.retainer;
+    delete legacy.arbitration;
+    const oldSaved = (await saveContract(db, { draft: legacy })).data!;
+    expect((await getContract(db, oldSaved.id)).data?.draft).toEqual(legacy);
+    const current = { ...draft(), quotedAmount: '7500' };
+    const saved = (await saveContract(db, { draft: current })).data!;
+    expect((await getContract(db, saved.id)).data?.draft).toEqual(current);
+    const terms = (await getContractTermsTemplate(db)).data!;
+    delete terms.terms.billableTimeTerms;
+    delete terms.terms.arbitration;
+    const template = await saveContractTermsTemplate(db, terms);
+    expect(template.success).toBe(true);
+    expect(template.data?.terms).not.toHaveProperty('billableTimeTerms');
+    expect(template.data?.terms).not.toHaveProperty('arbitration');
+    expect((await getContract(db, saved.id)).data?.draft.billableTimeTerms).toBe(current.billableTimeTerms);
+    expect(
+      (
+        await saveContract(db, {
+          id: saved.id,
+          revision: saved.revision,
+          draft: { ...current, retainer: { policy: 'estimate-ten-percent-capped-v1', terms: '' } }
+        })
+      ).success
+    ).toBe(false);
+    expect((await getContract(db, saved.id)).data?.draft).toEqual(current);
+    const missingNotice = await saveContract(db, {
+      id: saved.id,
+      revision: saved.revision,
+      draft: { ...current, arbitration: { terms: 'Custom arbitration terms', notice: '' } }
+    });
+    expect(missingNotice.success).toBe(false);
+    expect((await getContract(db, saved.id)).data?.draft.arbitration).toEqual(current.arbitration);
   });
 
   it('upgrades independently, preserves existing data, and retains snapshots after catalog changes', async () => {

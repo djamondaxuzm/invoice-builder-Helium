@@ -121,6 +121,11 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
     const reopened = await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id);
     expect(reopened.data?.draft.projectDetails?.approximateCompletion).toBe('2026-11-20');
     expect(reopened.data?.draft.standardTerms).toContain('signed by both parties');
+    expect(reopened.data?.draft.retainer).toEqual(contract.retainer);
+    expect(reopened.data?.draft.billableTimeTerms).toContain('no separate warning is required');
+    expect(reopened.data?.draft.paymentTerms).toContain('non-compounding late charge of 1.5%');
+    expect(reopened.data?.draft.arbitration).toEqual(contract.arbitration);
+    expect(template.data?.terms.arbitration).toEqual(contract.arbitration);
 
     const pdfPath = testInfo.outputPath('contract-draft.pdf');
     await app.evaluate(({ BrowserWindow }, output) => {
@@ -131,6 +136,8 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
       });
     }, pdfPath);
     await page.getByRole('tab', { name: 'Review', exact: true }).click();
+    await expect(page.getByText('ARBITRATION OF DISPUTES', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Upfront retainer: \$500\.00/)).toBeVisible();
     await page.getByRole('button', { name: 'Export draft PDF', exact: true }).click();
     await expect
       .poll(

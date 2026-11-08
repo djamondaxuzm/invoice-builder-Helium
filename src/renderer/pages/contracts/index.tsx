@@ -35,6 +35,8 @@ import type {
 } from '../../../backend/shared/types/contracts';
 import {
   contractFeeCents,
+  CONTRACT_BILLABLE_TIME_TERMS,
+  CONTRACT_RETAINER_TERMS,
   newContractDraft,
   newContractProjectDetails,
   validateContractDraft
@@ -47,8 +49,9 @@ import type { StyleProfile } from '../../shared/types/styleProfiles';
 import { getOptimizedLogoUrl } from '../../shared/utils/logoImage';
 import { useAppDispatch } from '../../state/configureStore';
 import { setAllowed } from '../../state/pageSlice';
-import { ContractPreview, contractAmount } from './ContractPreview';
+import { ContractPreview, contractAmount, contractRetainerAmount } from './ContractPreview';
 import { StandardTermsDialog } from './StandardTermsDialog';
+import { ArbitrationFields } from './ArbitrationFields';
 
 const steps = ['Client & project', 'Rates & fee', 'Terms', 'Review'];
 const today = () => {
@@ -318,6 +321,7 @@ export const ContractsPage = () => {
       | 'paymentTerms'
       | 'materialsTerms'
       | 'standardTerms'
+      | 'billableTimeTerms'
       | 'additionalTerms',
     label: string,
     rows?: number
@@ -679,15 +683,72 @@ export const ContractsPage = () => {
                           slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                         />
                       )}
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={Boolean(draft.retainer)}
+                            disabled={busy}
+                            onChange={(_, checked) =>
+                              change({
+                                retainer: checked
+                                  ? { policy: 'estimate-ten-percent-capped-v1', terms: CONTRACT_RETAINER_TERMS }
+                                  : null
+                              })
+                            }
+                          />
+                        }
+                        label="Include an upfront retainer"
+                      />
+                      {draft.retainer && (
+                        <>
+                          <Typography variant="h6" color="primary" aria-live="polite">
+                            Retainer: {contractRetainerAmount(draft)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {draft.quotedAmount === null
+                              ? '$500 when no estimate is given.'
+                              : '10% of the estimate, capped at $1,000.'}{' '}
+                            Credited to the first invoice; excess carries forward and any unused balance is refunded
+                            when work ends.
+                          </Typography>
+                          <TextField
+                            label="Retainer credit and refund terms"
+                            multiline
+                            minRows={3}
+                            disabled={busy}
+                            value={draft.retainer.terms}
+                            onChange={event => change({ retainer: { ...draft.retainer!, terms: event.target.value } })}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            California home-improvement down payments are generally limited to the lesser of $1,000 or
+                            10% of the agreed contract price. An estimate does not establish that price; confirm the
+                            permitted amount before collection. Record any payment received on the invoice separately.
+                          </Typography>
+                        </>
+                      )}
                     </>
                   )}
                   {step === 2 && (
                     <>
                       <Typography variant="h6">Terms &amp; billing</Typography>
+                      {field('billableTimeTerms', 'Billable time and consultation', 8)}
+                      <Button
+                        size="small"
+                        sx={{ alignSelf: 'flex-start' }}
+                        disabled={busy}
+                        onClick={() => change({ billableTimeTerms: CONTRACT_BILLABLE_TIME_TERMS })}
+                      >
+                        Use suggested time definitions
+                      </Button>
                       {field('billingSchedule', 'Billing schedule (optional)')}
                       {field('paymentTerms', 'Payment terms', 2)}
                       {field('materialsTerms', 'Materials', 2)}
                       {field('standardTerms', 'Standard terms for this contract', 8)}
+                      <ArbitrationFields
+                        value={draft.arbitration}
+                        disabled={busy}
+                        onChange={arbitration => change({ arbitration })}
+                      />
                       {field('additionalTerms', 'Additional charges / project terms', 3)}
                       <Typography variant="body2" color="text.secondary">
                         Edits apply to this contract. Other saved contracts retain their own terms.
@@ -708,6 +769,7 @@ export const ContractsPage = () => {
                           ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
                           : 'Rate not selected'}
                       </Typography>
+                      {draft.retainer && <Typography>Retainer: {contractRetainerAmount(draft)}</Typography>}
                       <FormControlLabel
                         control={
                           <Checkbox
@@ -722,8 +784,9 @@ export const ContractsPage = () => {
                         The signed toggle records status only. Both parties sign the printed agreement.
                       </Typography>
                       <Alert severity="info">
-                        Exports are marked draft for review. California residential agreements may require additional
-                        terms and statutory notices; this tool does not automatically supply them.
+                        Exports are marked draft for review. Arbitration includes its notice and separate initials when
+                        enabled. Other required California residential terms and statutory notices are not automatically
+                        supplied.
                       </Alert>
                       <Button variant="contained" disabled={busy} onClick={() => void exportPdf()}>
                         Export draft PDF

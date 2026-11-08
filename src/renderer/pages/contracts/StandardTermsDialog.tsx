@@ -11,7 +11,9 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import type { ContractTerms, ContractTermsTemplate } from '../../../backend/shared/types/contracts';
+import { CONTRACT_BILLABLE_TIME_TERMS } from '../../../backend/shared/utils/contracts';
 import { getApi } from '../../shared/api/restApi';
+import { ArbitrationFields } from './ArbitrationFields';
 
 export const StandardTermsDialog = ({
   onClose,
@@ -44,7 +46,7 @@ export const StandardTermsDialog = ({
       active = false;
     };
   }, []);
-  const update = (key: keyof ContractTerms, value: string) => {
+  const update = <K extends keyof ContractTerms>(key: K, value: ContractTerms[K]) => {
     setTemplate(previous => (previous ? { ...previous, terms: { ...previous.terms, [key]: value } } : previous));
     onDirtyChange(true);
     setError('');
@@ -77,6 +79,21 @@ export const StandardTermsDialog = ({
           {template && (
             <>
               <TextField
+                label="Default billable time and consultation"
+                multiline
+                minRows={6}
+                value={template.terms.billableTimeTerms ?? ''}
+                disabled={busy}
+                onChange={event => update('billableTimeTerms', event.target.value)}
+              />
+              <Button
+                disabled={busy}
+                sx={{ alignSelf: 'flex-start' }}
+                onClick={() => update('billableTimeTerms', CONTRACT_BILLABLE_TIME_TERMS)}
+              >
+                Use suggested time definitions
+              </Button>
+              <TextField
                 label="Default billing schedule (optional)"
                 value={template.terms.billingSchedule}
                 disabled={busy}
@@ -105,6 +122,11 @@ export const StandardTermsDialog = ({
                 value={template.terms.standardTerms}
                 disabled={busy}
                 onChange={event => update('standardTerms', event.target.value)}
+              />
+              <ArbitrationFields
+                value={template.terms.arbitration}
+                disabled={busy}
+                onChange={value => update('arbitration', value)}
               />
             </>
           )}

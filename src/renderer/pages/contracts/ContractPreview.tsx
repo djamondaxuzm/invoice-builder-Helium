@@ -1,7 +1,11 @@
 import { Box, Divider, Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
 import type { ContractDraft } from '../../../backend/shared/types/contracts';
-import { contractFeeCents, CONTRACT_ESTIMATE_TERMS } from '../../../backend/shared/utils/contracts';
+import {
+  contractFeeCents,
+  contractRetainerCents,
+  CONTRACT_ESTIMATE_TERMS
+} from '../../../backend/shared/utils/contracts';
 
 export const contractMoney = (cents: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
@@ -11,6 +15,14 @@ export const contractAmount = (rate: string, multiplier = '1') => {
     return contractMoney(contractFeeCents(rate, multiplier));
   } catch {
     return '—';
+  }
+};
+
+export const contractRetainerAmount = (draft: ContractDraft) => {
+  try {
+    return contractMoney(contractRetainerCents(draft));
+  } catch {
+    return 'Enter a valid estimate';
   }
 };
 
@@ -67,7 +79,7 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
           {draft.date ? draft.date.slice(5, 7) + '/' + draft.date.slice(8) + '/' + draft.date.slice(0, 4) : ''}
         </Typography>
         {section(
-          'Project / scope',
+          'Project',
           <>
             <Typography>{draft.scope}</Typography>
             <Typography>{draft.projectAddress}</Typography>
@@ -92,7 +104,7 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
           </>
         )}
         {section(
-          'Labor rates',
+          'Rates & billable time',
           <>
             {draft.rates.map(rate => (
               <Stack key={rate.sourceId} direction="row" sx={{ my: 1, justifyContent: 'space-between', gap: 1 }}>
@@ -104,12 +116,14 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
               </Stack>
             ))}
             {!draft.rates.length && <Typography>No labor rates selected.</Typography>}
+            {draft.billableTimeTerms && <Typography sx={{ mt: 2 }}>{draft.billableTimeTerms}</Typography>}
           </>
         )}
         {section(
-          'Assessment & quoting',
+          'Charges & payment',
           <>
-            <Typography sx={{ fontWeight: 600 }}>
+            <Typography>
+              Assessment &amp; quoting:{' '}
               {draft.assessmentRate
                 ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
                 : 'Select a rate item'}
@@ -120,26 +134,40 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
               </Typography>
             )}
             <Typography>Billed on the first invoice.</Typography>
-          </>
-        )}
-        {draft.quotedAmount !== null &&
-          section(
-            'Estimated project cost',
-            <>
-              <Typography>{contractAmount(draft.quotedAmount)}</Typography>
-              <Typography sx={{ mt: 1 }}>{CONTRACT_ESTIMATE_TERMS}</Typography>
-            </>
-          )}
-        {section(
-          'Materials & payment',
-          <>
-            <Typography>{draft.materialsTerms}</Typography>
+            {draft.quotedAmount !== null && (
+              <Typography sx={{ mt: 2 }}>
+                Estimated project cost: {contractAmount(draft.quotedAmount)}. {CONTRACT_ESTIMATE_TERMS}
+              </Typography>
+            )}
+            {draft.retainer && (
+              <>
+                <Typography sx={{ mt: 2, fontWeight: 600 }}>
+                  Upfront retainer: {contractRetainerAmount(draft)}
+                </Typography>
+                <Typography>
+                  {draft.quotedAmount === null ? '$500; no estimate given.' : '10% of the estimate, capped at $1,000.'}
+                </Typography>
+                <Typography>{draft.retainer.terms}</Typography>
+              </>
+            )}
+            <Typography sx={{ mt: 2 }}>{draft.materialsTerms}</Typography>
             <Typography sx={{ mt: 1 }}>{draft.billingSchedule}</Typography>
             <Typography>{draft.paymentTerms}</Typography>
+            <Typography sx={{ mt: 2 }}>{draft.standardTerms}</Typography>
+            {draft.additionalTerms && <Typography sx={{ mt: 2 }}>{draft.additionalTerms}</Typography>}
           </>
         )}
-        {section('Terms', <Typography>{draft.standardTerms}</Typography>)}
-        {draft.additionalTerms && section('Additional terms', <Typography>{draft.additionalTerms}</Typography>)}
+        {draft.arbitration &&
+          section(
+            'ARBITRATION OF DISPUTES',
+            <>
+              <Typography sx={{ fontWeight: 700, textTransform: 'uppercase' }}>{draft.arbitration.terms}</Typography>
+              <Typography sx={{ mt: 2, fontWeight: 700, textTransform: 'uppercase' }}>
+                {draft.arbitration.notice}
+              </Typography>
+              <Typography sx={{ mt: 2 }}>Business initials: __________ Client initials: __________</Typography>
+            </>
+          )}
         <Stack direction="row" spacing={3} sx={{ mt: 5 }}>
           {['For ' + (draft.business?.name || 'the business'), 'Client'].map(label => (
             <Box key={label} sx={{ width: '50%', pt: 1, borderTop: '1px solid #888' }}>
