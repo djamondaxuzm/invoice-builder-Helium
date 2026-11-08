@@ -2,6 +2,10 @@
 
 New features & improvements
 
+- Add Contracts with client filtering, catalog labor rates, editable assessment-fee multipliers, optional cost estimates, project details, signed status and reusable standard terms. Saved contracts retain their business, client, rate and terms snapshots after catalog edits or archiving.
+- Export compact Letter/A4 draft agreements using the selected logo, color and font, with both signature blocks kept together. Include work-only travel, materials at cost, 15-day payment terms and approved written-change wording. Contracts do not create invoices or payments; California statutory residential notices are not generated automatically.
+- Add isolated contract tables, backward-compatible JSON backup support, validated project dates, stale-save protection and packaged-app contract checks.
+
 - Package compiled JavaScript libraries once, keeping only the SQLite runtime dependency tree outside the bundles. On Windows, the app archive shrank from 219,472,452 to 36,478,545 bytes and separate dependency files from 53,142 to 852. Preserve bundled license notices, existing app identity, database migrations, updater code and macOS support.
 - Add a shared installer command with fresh output folders, separate compilation/packaging timings, full installer paths and a build-metrics report. Add Windows installer creation and Windows/macOS packaged-app SQLite smoke checks to CI.
 - Resize large PDF logo copies to a 384-pixel edge (over 300 DPI at the largest printed size), preserve transparency/aspect ratios, and reuse repeated images across pages. A four-page billing-period export using the same saved invoices dropped from 3,786,666 to 350,320 bytes (90.7% smaller) with identical extracted text; stored originals remain unchanged.

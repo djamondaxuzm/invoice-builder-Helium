@@ -3,6 +3,7 @@ import { initBanksController } from './banks';
 import { initBusinessesController } from './businesses';
 import { initCategoriesController } from './categories';
 import { initClientsController } from './clients';
+import { initContractsController } from './contracts';
 import { initCurrenciesController } from './currencies';
 import { initImportExportController } from './importExport';
 import { initInvoicesController } from './invoices';
@@ -19,6 +20,7 @@ export const initControllers = (app: Express) => {
   initBusinessesController(app);
   initCategoriesController(app);
   initClientsController(app);
+  initContractsController(app);
   initInvoicesController(app);
   initItemsController(app);
   initSettingsController(app);

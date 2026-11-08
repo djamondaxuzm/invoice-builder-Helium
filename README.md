@@ -39,15 +39,16 @@ Already using Helium? [Back up your database and upgrade](INSTALL.md#updating-an
 
 ## What you can do
 
-| Workflow                        | What Helium provides                                                                                                                                                                    |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Create invoices and quotes**  | Reusable businesses, clients, items, units, and currencies; discounts, taxes, shipping, and surcharges; PDF previews and export.                                                        |
-| **Bill a client for a period**  | Choose a client, filter by business and currency, and select dated invoices with checkboxes, Ctrl/Cmd-click, or Shift-click. Export their invoices, receipts, and a combined summary.   |
-| **Record payments**             | Capture amounts, actual dates, methods, and notes. Allocate one payment across multiple invoices with a per-invoice preview before saving.                                              |
-| **Understand your finances**    | Filter by period, client, business, and currency. Compare invoiced amounts with dated payments, review outstanding balances and overdue aging, and export report tables to CSV.         |
-| **Make PDFs your own**          | Company logos, style profiles, layouts, receipt attachments, and branded billing-period summaries. Logos retain their proportions; eligible large logos are optimized for smaller PDFs. |
-| **Keep shared details current** | Update linked business/client details and catalog items across existing invoices and quotes. Archive catalog entries without removing their existing invoice lines.                     |
-| **Keep control of your data**   | Local SQLite storage, database backups, JSON import/export, and spreadsheet exports. Existing PostgreSQL connections remain supported.                                                  |
+| Workflow                        | What Helium provides                                                                                                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create invoices and quotes**  | Reusable businesses, clients, items, units, and currencies; discounts, taxes, shipping, and surcharges; PDF previews and export.                                                                                                |
+| **Draft work contracts**        | Client-specific hourly rates, assessment fees, optional estimates, project details, editable standard terms and Letter/A4 draft PDFs with spaces for both parties to sign. [Contract guide](TUTORIAL.md#draft-a-work-contract). |
+| **Bill a client for a period**  | Choose a client, filter by business and currency, and select dated invoices with checkboxes, Ctrl/Cmd-click, or Shift-click. Export their invoices, receipts, and a combined summary.                                           |
+| **Record payments**             | Capture amounts, actual dates, methods, and notes. Allocate one payment across multiple invoices with a per-invoice preview before saving.                                                                                      |
+| **Understand your finances**    | Filter by period, client, business, and currency. Compare invoiced amounts with dated payments, review outstanding balances and overdue aging, and export report tables to CSV.                                                 |
+| **Make PDFs your own**          | Company logos, style profiles, layouts, receipt attachments, and branded billing-period summaries. Logos retain their proportions; eligible large logos are optimized for smaller PDFs.                                         |
+| **Keep shared details current** | Update linked business/client details and catalog items across existing invoices and quotes. Archive catalog entries without removing their existing invoice lines.                                                             |
+| **Keep control of your data**   | Local SQLite storage, database backups, JSON import/export, and spreadsheet exports. Existing PostgreSQL connections remain supported.                                                                                          |
 
 ## A clearer view of your billing
 

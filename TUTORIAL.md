@@ -4,6 +4,20 @@ For downloads, local builds and upgrades, start with the [installation guide](IN
 
 > 💡 **Note:** The interface is fully responsive and works well on resizable windows, making it suitable for small screens and resizable Windows or macOS windows.
 
+## Draft a work contract
+
+1. Open **Documents → Contracts → New contract**, select a client and business, and enter the project title and general scope. Expand **Project-specific details** for agreed work/materials, approximate dates, permits and access or cleanup arrangements. Blank details are omitted; completion cannot precede the start date.
+2. Choose a style profile and **US Letter** or **A4**. Letter is the default. The PDF uses the selected logo, font and color.
+3. In **Rates & fee**, select catalog labor items, then choose an assessment-rate item and an editable multiplier. The assessment fee is billed on the first invoice; add it to that invoice yourself. Optional estimated project cost is explicitly an estimate, not a fixed price.
+4. Review **Terms**. Defaults round time up to 15 minutes with no visit minimum, bill work travel at half the applicable rate, exclude ordinary commuting, reimburse materials at cost without markup, and require payment within 15 days of invoice notice. Changes to agreed work require written terms signed by both parties before the changed work begins. All wording is editable.
+5. **Save draft**, then **Export draft PDF** from Review. Both parties have blank signature, printed-name and date lines. **Signed** is a tracking toggle, not an electronic signature.
+
+**Standard terms** edits the defaults for new contracts only. Existing and currently open drafts retain their wording. Contract business/client details, logos and rates are also snapshots: catalog edits, archiving or deletion do not rewrite saved agreements. Contracts never automatically create or change invoices or payments. Contract amounts use USD and dates display MM/DD/YYYY.
+
+Contracts and reusable terms are included in full JSON backups. Older databases gain separate contract tables when opened; existing invoices and receipt blobs are not rewritten by these migrations.
+
+**Drafting scope:** Exported agreements are marked **DRAFT - FOR REVIEW**. This tool does not automatically generate California residential statutory notices or determine which legal requirements apply. Before using an agreement as the sole contract for residential construction, have its project terms and required notices reviewed for that use. [CSLB contract guidance](https://www.cslb.ca.gov/Consumers/Hire_a_Contractor/Contracts_And_Binding_Agreements.aspx).
+
 ## Export a billing period
 
 1. Save the individual daily invoices as usual.
