@@ -158,7 +158,7 @@ export const ServerDatabase: FC<Props> = ({ onDatabaseRead }) => {
         </>
       )}
 
-      <Typography variant="h5" noWrap component="div" sx={{ color: theme.palette.secondary.main }}>
+      <Typography variant="h5" component="h2" sx={{ color: theme.palette.text.primary }}>
         {<>{t('databaseChooser.titleServer')}</>}
       </Typography>
       <Typography variant="body1" noWrap component="div" sx={{ whiteSpace: 'pre-wrap' }}>

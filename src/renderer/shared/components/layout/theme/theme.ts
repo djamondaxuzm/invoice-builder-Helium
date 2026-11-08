@@ -1,4 +1,4 @@
-import { createTheme, type ThemeOptions } from '@mui/material/styles';
+import { createTheme, type PaletteMode, type ThemeOptions } from '@mui/material/styles';
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -14,128 +14,68 @@ const commonSettings: ThemeOptions = {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: { fontWeight: 700, fontSize: '2rem' },
     h2: { fontWeight: 600, fontSize: '1.75rem' },
+    h4: { fontWeight: 600, fontSize: '1.5rem', lineHeight: 1.35 },
+    h5: { fontWeight: 600, fontSize: '1.25rem', lineHeight: 1.4 },
+    h6: { fontWeight: 600, fontSize: '1.0625rem', lineHeight: 1.5 },
     button: { textTransform: 'none', fontWeight: 600 }
   },
   shape: { borderRadius: 12 },
   components: {
     MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12
-        }
-      }
+      defaultProps: { disableElevation: true },
+      styleOverrides: { root: { borderRadius: 8, minHeight: 36 }, sizeSmall: { minHeight: 32 } }
     },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12
-        }
-      }
+    MuiToggleButton: {
+      styleOverrides: { root: { textTransform: 'none', fontWeight: 600, padding: '6px 16px' } }
     },
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          '&::-webkit-scrollbar': {
-            width: '10px',
-            height: '10px'
-          },
-          '&::-webkit-scrollbar-track': {
-            borderRadius: '5px'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            borderRadius: '5px'
-          },
-          scrollbarWidth: 'thin'
-        }
-      }
+    MuiToggleButtonGroup: { styleOverrides: { root: { borderRadius: 8 } } },
+    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 8 } } },
+    MuiPaper: { styleOverrides: { rounded: { borderRadius: 12 } } },
+    MuiCard: {
+      defaultProps: { variant: 'outlined' },
+      styleOverrides: { root: { backgroundImage: 'none' } }
+    },
+    MuiDialogTitle: { styleOverrides: { root: { fontSize: '1.25rem', fontWeight: 600 } } },
+    MuiDialogActions: { styleOverrides: { root: { padding: '16px 24px', gap: 8, flexWrap: 'wrap' } } },
+    MuiTab: { styleOverrides: { root: { textTransform: 'none', fontWeight: 600 } } },
+    MuiTableCell: {
+      styleOverrides: { head: ({ theme }) => ({ backgroundColor: theme.palette.action.hover, fontWeight: 600 }) }
     }
   }
 };
 
-export const lightTheme = createTheme({
-  ...commonSettings,
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          '&::-webkit-scrollbar-track': {
-            background: '#e5e5e5'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#1976d2',
-            border: '2px solid #e5e5e5'
-          },
-          scrollbarColor: '#1976d2 #e5e5e5'
-        },
-        '*': {
-          '&::-webkit-scrollbar-track': {
-            background: '#e5e5e5'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#1976d2',
-            border: '2px solid #e5e5e5'
-          },
-          scrollbarColor: '#1976d2 #e5e5e5'
+const appTheme = (mode: PaletteMode) => {
+  const dark = mode === 'dark';
+  const track = dark ? '#20252d' : '#edf0f5';
+  const thumb = dark ? '#616e80' : '#a1adbc';
+  // Preserve shared controls while deriving the palette from the selected mode.
+  return createTheme({
+    ...commonSettings,
+    palette: {
+      mode,
+      primary: { main: dark ? '#90caf9' : '#1976d2' },
+      secondary: { main: dark ? '#ce93d8' : '#9c27b0' },
+      background: { default: dark ? '#12161c' : '#f5f6fa', paper: dark ? '#1c222b' : '#ffffff' },
+      text: { primary: dark ? '#edf2f7' : '#202936', secondary: dark ? '#b0bdcd' : '#566477' },
+      divider: dark ? '#354050' : '#dce2eb',
+      customBorder: dark ? '#354050' : '#dce2eb'
+    },
+    components: {
+      ...commonSettings.components,
+      MuiCssBaseline: {
+        styleOverrides: {
+          '*': {
+            scrollbarWidth: 'thin',
+            '&::-webkit-scrollbar': { width: 10, height: 10 },
+            '&::-webkit-scrollbar-track': { background: track, borderRadius: 5 },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: thumb, border: `2px solid ${track}`, borderRadius: 5 },
+            scrollbarColor: `${thumb} ${track}`
+          }
         }
       }
     }
-  },
-  palette: {
-    mode: 'light',
-    primary: { main: '#1976d2' },
-    secondary: { main: '#9c27b0' },
-    background: {
-      default: '#f5f6fa',
-      paper: '#ffffff'
-    },
-    text: {
-      primary: '#1e1e1e',
-      secondary: '#555'
-    },
-    customBorder: '#e0e0e0'
-  }
-});
+  });
+};
 
-export const darkTheme = createTheme({
-  ...commonSettings,
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          '&::-webkit-scrollbar-track': {
-            background: '#2c2c2c'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#1976d2',
-            border: '2px solid #2c2c2c'
-          },
-          scrollbarColor: '#1976d2 #2c2c2c'
-        },
-        '*': {
-          '&::-webkit-scrollbar-track': {
-            background: '#2c2c2c'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#1976d2',
-            border: '2px solid #2c2c2c'
-          },
-          scrollbarColor: '#1976d2 #2c2c2c'
-        }
-      }
-    }
-  },
-  palette: {
-    mode: 'dark',
-    primary: { main: '#90caf9' },
-    secondary: { main: '#ce93d8' },
-    background: {
-      default: '#121212',
-      paper: '#1e1e1e'
-    },
-    text: {
-      primary: '#ffffff',
-      secondary: '#b0b0b0'
-    },
-    customBorder: '#333'
-  }
-});
+export const lightTheme = appTheme('light');
+export const darkTheme = appTheme('dark');

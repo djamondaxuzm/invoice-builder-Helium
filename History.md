@@ -2,6 +2,9 @@
 
 New features & improvements
 
+- Publish preview 2.9.0-contracts.5 with a dedicated contract Edit / Preview switch matching invoices and quotes, preserving draft edits and the current step. Standardize shared controls, headers, navigation, surfaces and empty states across light/dark themes, and allow header actions to wrap in smaller windows.
+- Preserve shared theme component overrides when applying light/dark palettes. Keep document content, billing calculations, stored data and exported PDFs unchanged.
+
 - Add contract deletion from the list and editor in preview 2.9.0-contracts.4. Confirm the title/client, flag signed records and unsaved edits, reject stale deletions atomically, and keep invoices, payments, catalog records, standard terms and exported PDFs unchanged. No database migration is needed.
 - Publish the approved complete-errand, per-session rounding and first-invoice consultation-labor wording as preview installer 2.9.0-contracts.3. Keep older saved agreements and database templates unchanged unless their suggested time definitions are explicitly applied.
 - Clarify that initial consultation, assessment and quoting are full-rate hourly labor billed on the first invoice. Replace the ambiguous assessment-fee exclusion with plain once-per-period wording, align editor/PDF labels and retainer-credit wording, and identify outside consultants as third parties.

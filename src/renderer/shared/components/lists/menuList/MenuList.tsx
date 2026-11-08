@@ -55,16 +55,33 @@ export const MenuList: FC<Props> = ({ items, showText, useTooltip }) => {
   }, [items]);
 
   const renderItem = (item: MenuItem) => {
+    const selected = typeof item.isSelected === 'function' ? item.isSelected(item) : item.isSelected;
     const listButton = (
       <ListItemButton
-        selected={typeof item.isSelected === 'function' ? item.isSelected(item) : item.isSelected}
+        selected={selected}
+        aria-label={item.text}
+        aria-current={selected && item.path ? 'page' : undefined}
         onClick={() => {
           if (item.isToggle && item.onChange) item.onChange(item);
           else if (item.onClick) item.onClick(item);
         }}
-        sx={{ ...(item.minHeight !== undefined && { minHeight: item.minHeight }) }}
+        sx={{
+          borderRadius: '8px',
+          my: 0.25,
+          px: 1.5,
+          minHeight: item.minHeight ?? 44,
+          color: selected ? 'primary.main' : 'text.primary',
+          '& .MuiListItemText-primary': { fontWeight: selected ? 600 : 400 }
+        }}
       >
-        <ListItemIcon sx={{ color: theme.palette.text.primary || 'inherit' }}>{item.icon}</ListItemIcon>
+        <ListItemIcon
+          sx={{
+            minWidth: showText ? 36 : 24,
+            color: selected ? theme.palette.primary.main : theme.palette.text.secondary
+          }}
+        >
+          {item.icon}
+        </ListItemIcon>
 
         {showText && (
           <>
@@ -95,9 +112,14 @@ export const MenuList: FC<Props> = ({ items, showText, useTooltip }) => {
     const isOpen = groupName ? openGroups[groupName] : false;
 
     const groupButton = (
-      <ListItemButton onClick={() => toggleGroup(groupName ?? '')}>
+      <ListItemButton
+        aria-label={groupName}
+        aria-expanded={Boolean(isOpen)}
+        onClick={() => toggleGroup(groupName ?? '')}
+        sx={{ borderRadius: '8px', px: 1.5, minHeight: 44, color: 'text.secondary' }}
+      >
         {groupIcon && (
-          <ListItemIcon>
+          <ListItemIcon sx={{ minWidth: showText ? 36 : 24, color: 'inherit' }}>
             <Badge
               variant="dot"
               color="primary"
@@ -110,8 +132,10 @@ export const MenuList: FC<Props> = ({ items, showText, useTooltip }) => {
           </ListItemIcon>
         )}
 
-        {showText && <ListItemText primary={groupName} />}
-        {isOpen ? <ExpandLess /> : <ExpandMore />}
+        {showText && (
+          <ListItemText primary={groupName} slotProps={{ primary: { variant: 'body2', sx: { fontWeight: 600 } } }} />
+        )}
+        {showText && (isOpen ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />)}
       </ListItemButton>
     );
 
@@ -134,7 +158,7 @@ export const MenuList: FC<Props> = ({ items, showText, useTooltip }) => {
   };
 
   return (
-    <List sx={{ flexGrow: 1 }}>
+    <List sx={{ flexGrow: 1, px: 0.75 }}>
       {[...groups.values()].map(meta => {
         return renderGroup(meta);
       })}

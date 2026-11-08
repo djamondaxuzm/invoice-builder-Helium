@@ -24,7 +24,7 @@ const LanguageSelectorComponent: FC<Props> = ({ onEdit, isRequired = true, langu
               variant="body1"
               sx={{ fontWeight: 600, color: theme.palette.primary.main, overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('languageFormat.language').toUpperCase()} {isRequired ? '*' : ''}
+              {t('languageFormat.language')} {isRequired ? '*' : ''}
             </Typography>
           }
           secondary={

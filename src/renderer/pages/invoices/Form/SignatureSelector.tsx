@@ -102,7 +102,7 @@ const SignatureSelectorComponent: FC<Props> = ({ data, onEdit }) => {
                 variant="body1"
                 sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
               >
-                {t('common.signature').toUpperCase()}
+                {t('common.signature')}
               </Typography>
             </Box>
           }

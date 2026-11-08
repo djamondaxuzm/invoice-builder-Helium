@@ -21,7 +21,7 @@ const StyleProfileSelectorComponent: FC<Props> = ({ name, onEdit }) => {
               variant="body1"
               sx={{ fontWeight: 600, color: theme.palette.primary.main, overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('styleProfiles.title').toUpperCase()}
+              {t('styleProfiles.title')}
             </Typography>
           }
           secondary={

@@ -136,6 +136,13 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
       });
     }, pdfPath);
     await page.getByRole('tab', { name: 'Review', exact: true }).click();
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Contract document preview' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Review', exact: true })).toBeHidden();
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.getByRole('tab', { name: 'Review', exact: true })).toBeVisible();
+    await expect(page.getByText('Review contract', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
     await expect(page.getByText('ARBITRATION OF DISPUTES', { exact: true })).toBeVisible();
     await expect(page.getByText(/Upfront retainer: \$500\.00/)).toBeVisible();
     await page.getByRole('button', { name: 'Export draft PDF', exact: true }).click();

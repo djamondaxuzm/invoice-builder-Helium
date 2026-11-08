@@ -36,16 +36,31 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
   );
   const font = draft.style.fontFamily === 'Times-Roman' ? 'Georgia, serif' : draft.style.fontFamily;
   return (
-    <Box component="aside" aria-label="Contract document preview" sx={{ minWidth: 0 }}>
+    <Box
+      component="section"
+      aria-label="Contract document preview"
+      sx={{
+        minWidth: 0,
+        p: { xs: 1, sm: 3 },
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: '12px',
+        bgcolor: 'action.hover'
+      }}
+    >
       <Typography variant="caption" color="text.secondary">
         Document preview · {draft.style.pageFormat === 'LETTER' ? 'US Letter' : 'A4'}
       </Typography>
       <Box
         sx={{
           mt: 1,
-          p: { xs: 2, lg: 3 },
+          mx: 'auto',
+          maxWidth: draft.style.pageFormat === 'LETTER' ? 816 : 794,
+          minHeight: draft.style.pageFormat === 'LETTER' ? 1056 : 1123,
+          p: { xs: 2, sm: 5 },
           bgcolor: '#fff',
           color: '#222',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
           fontFamily: font,
           overflowWrap: 'anywhere',
           '& p': { fontFamily: 'inherit', fontSize: 12, whiteSpace: 'pre-wrap' }

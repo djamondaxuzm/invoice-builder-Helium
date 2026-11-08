@@ -35,7 +35,7 @@ const ClientSelectorComponent: FC<Props> = ({ clientName, onEdit, isRequired = t
               variant="body1"
               sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('invoices.billTo').toUpperCase()} {isRequired ? '*' : ''}
+              {t('invoices.billTo')} {isRequired ? '*' : ''}
             </Typography>
           }
           secondary={

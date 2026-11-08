@@ -25,14 +25,25 @@ export const ModalAppBar: FC<Props> = ({
   const theme = useTheme();
 
   return (
-    <AppBar sx={{ position: 'relative', borderRadius: '0' }}>
-      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+    <AppBar
+      elevation={0}
+      color="default"
+      sx={{
+        position: 'relative',
+        borderRadius: 0,
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+        borderBottom: 1,
+        borderColor: 'divider'
+      }}
+    >
+      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, py: 1 }}>
         <Tooltip title={t('ariaLabel.back')}>
           <IconButton
             onClick={onClose}
             aria-label={t('ariaLabel.back')}
             sx={{
-              color: theme.palette.secondary.main
+              color: theme.palette.text.secondary
             }}
           >
             <ArrowBackIcon fontSize="medium" />
@@ -40,11 +51,11 @@ export const ModalAppBar: FC<Props> = ({
         </Tooltip>
 
         {title && (
-          <Typography variant="h5" component="div">
+          <Typography variant="h5" component="h2" sx={{ flexGrow: 1, overflowWrap: 'anywhere' }}>
             {title}
           </Typography>
         )}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           {renderCustomButtons()}
           <Tooltip
             title={!isFormValid && description ? description : ''}
@@ -55,7 +66,7 @@ export const ModalAppBar: FC<Props> = ({
             <Box>
               <Button
                 autoFocus
-                color="inherit"
+                variant="contained"
                 onClick={() => {
                   if (formData !== undefined) onSave(formData);
                 }}

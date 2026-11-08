@@ -343,7 +343,12 @@ export const Sidebar: FC = () => {
       <Box sx={{ p: 2 }}>
         <Divider />
         {open && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center', whiteSpace: 'nowrap' }}>
+          <Typography
+            variant="caption"
+            component="div"
+            color="text.secondary"
+            sx={{ mt: 1, textAlign: 'center', overflowWrap: 'anywhere' }}
+          >
             {t(`app.version`)}: {version}
           </Typography>
         )}

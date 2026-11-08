@@ -144,7 +144,7 @@ const AttachmentsListComponent: FC<Props> = ({ invoiceForm, onAttach, onClear, o
               variant="body1"
               sx={{ fontWeight: 600, color: 'primary.main', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {t('invoices.attachments').toUpperCase()}
+              {t('invoices.attachments')}
             </Typography>
           </Box>
         }

@@ -27,6 +27,9 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import { EditPreviewToggle } from '../invoices/Form/EditPreviewToggle';
+import { InvoiceFormMode } from '../../shared/enums/invoiceFormMode';
 import type {
   ContractDraft,
   ContractParty,
@@ -89,6 +92,7 @@ export const ContractsPage = () => {
   const [saved, setSaved] = useState<SavedContract | null>(null);
   const [dirty, setDirty] = useState(false);
   const [step, setStep] = useState(0);
+  const [mode, setMode] = useState(InvoiceFormMode.edit);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -171,6 +175,7 @@ export const ContractsPage = () => {
       setSaved(null);
       setDirty(false);
       setStep(0);
+      setMode(InvoiceFormMode.edit);
       setNotice('');
     } catch (err) {
       if (mounted.current) setError(err instanceof Error ? err.message : 'Could not start a contract.');
@@ -189,6 +194,7 @@ export const ContractsPage = () => {
         setSaved(result.data);
         setDirty(false);
         setStep(0);
+        setMode(InvoiceFormMode.edit);
         setNotice('');
       }
     } catch (err) {
@@ -389,10 +395,10 @@ export const ContractsPage = () => {
         direction="row"
         sx={{ mb: 3, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
       >
-        <Typography variant="h4" color="secondary">
+        <Typography variant="h5" component="h1">
           Contracts
         </Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
           <Button disabled={loading || busy} onClick={() => setTemplateOpen(true)}>
             Standard terms
           </Button>
@@ -411,7 +417,12 @@ export const ContractsPage = () => {
               Contract list
             </Button>
           )}
-          <Button variant="contained" disabled={loading || busy} onClick={() => navigate(start)}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            disabled={loading || busy}
+            onClick={() => navigate(start)}
+          >
             New contract
           </Button>
         </Stack>
@@ -446,7 +457,7 @@ export const ContractsPage = () => {
           </TextField>
           <Stack spacing={2}>
             {visibleContracts.map(row => (
-              <Paper key={row.id} component="article" aria-label={row.title} sx={{ p: 2 }}>
+              <Paper key={row.id} variant="outlined" component="article" aria-label={row.title} sx={{ p: 2 }}>
                 <Stack
                   direction="row"
                   sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}
@@ -487,398 +498,407 @@ export const ContractsPage = () => {
       )}
       {draft && (
         <>
-          <Stepper nonLinear activeStep={step} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
-            {steps.map((label, index) => (
-              <Step key={label}>
-                <StepButton disabled={busy} onClick={() => setStep(index)}>
-                  {label}
-                </StepButton>
-              </Step>
-            ))}
-          </Stepper>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1.15fr) minmax(0, 1fr)' },
-              gap: 3,
-              alignItems: 'start'
-            }}
+          <Stack
+            direction="row"
+            sx={{ mb: 3, gap: 2, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            <Box>
-              <Paper sx={{ p: { xs: 2, md: 3 } }}>
-                <Stack spacing={2.5}>
-                  {step === 0 && (
-                    <>
-                      <Typography variant="h6">Client &amp; project</Typography>
-                      <Autocomplete
-                        options={clientOptions}
-                        value={draft.client}
-                        disabled={busy}
-                        isOptionEqualToValue={(a, b) => a.sourceId === b.sourceId}
-                        getOptionLabel={option => option.name}
-                        onChange={(_, value) => change({ client: value ? { ...value } : null })}
-                        renderInput={params => <TextField {...params} label="Client" />}
-                      />
-                      <Autocomplete
-                        options={businessOptions}
-                        value={draft.business}
-                        disabled={busy}
-                        isOptionEqualToValue={(a, b) => a.sourceId === b.sourceId}
-                        getOptionLabel={option => option.name}
-                        onChange={(_, value) => {
-                          const current = businesses.find(business => business.id === value?.sourceId);
-                          if (current) void selectBusiness(current);
-                          else if (!value) change({ business: null });
-                        }}
-                        renderInput={params => <TextField {...params} label="Business" />}
-                      />
-                      {field('title', 'Project title')}
-                      <TextField
-                        label="Contract date"
-                        type="date"
-                        value={draft.date}
-                        disabled={busy}
-                        slotProps={{ inputLabel: { shrink: true } }}
-                        onChange={event => change({ date: event.target.value })}
-                      />
-                      {field('projectAddress', 'Project address')}
-                      {field('scope', 'Project scope', 3)}
-                      <Accordion disableGutters elevation={0} sx={{ '&:before': { display: 'none' } }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography color="primary">Project-specific details</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Stack spacing={2}>
-                            <TextField
-                              label="Agreed work and materials"
-                              multiline
-                              minRows={3}
-                              disabled={busy}
-                              value={projectDetails.workAndMaterials}
-                              onChange={event => changeProjectDetail('workAndMaterials', event.target.value)}
-                            />
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                              <TextField
-                                label="Approximate start"
-                                type="date"
-                                fullWidth
-                                disabled={busy}
-                                slotProps={{ inputLabel: { shrink: true } }}
-                                value={projectDetails.approximateStart}
-                                onChange={event => changeProjectDetail('approximateStart', event.target.value)}
-                              />
-                              <TextField
-                                label="Approximate completion"
-                                type="date"
-                                fullWidth
-                                disabled={busy}
-                                slotProps={{ inputLabel: { shrink: true } }}
-                                value={projectDetails.approximateCompletion}
-                                error={projectDateError}
-                                helperText={
-                                  projectDateError ? 'Completion cannot be before the start date.' : undefined
-                                }
-                                onChange={event => changeProjectDetail('approximateCompletion', event.target.value)}
-                              />
-                            </Stack>
-                            <TextField
-                              label="Permit arrangements"
-                              disabled={busy}
-                              value={projectDetails.permitArrangements}
-                              onChange={event => changeProjectDetail('permitArrangements', event.target.value)}
-                            />
-                            <TextField
-                              label="Access, cleanup, or other agreed details"
-                              multiline
-                              minRows={2}
-                              disabled={busy}
-                              value={projectDetails.otherArrangements}
-                              onChange={event => changeProjectDetail('otherArrangements', event.target.value)}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                              Blank details are omitted from the PDF.
-                            </Typography>
-                          </Stack>
-                        </AccordionDetails>
-                      </Accordion>
-                      <TextField
-                        select
-                        label="Style profile"
-                        value={draft.style.sourceId ?? ''}
-                        disabled={busy}
-                        onChange={event => {
-                          const style = styles.find(profile => profile.id === Number(event.target.value));
-                          if (style)
-                            change({
-                              style: {
-                                sourceId: style.id,
-                                name: style.name,
-                                color: style.color || '#006400',
-                                fontFamily: style.fontFamily || 'Helvetica',
-                                fontSize: style.fontSize || 'medium',
-                                logoSize: style.logoSize || 'medium',
-                                pageFormat: style.pageFormat === 'A4' ? 'A4' : 'LETTER'
-                              }
-                            });
-                          else if (!event.target.value) change({ style: newContractDraft(today()).style });
-                        }}
-                      >
-                        <MenuItem value="">Default</MenuItem>
-                        {styles
-                          .filter(style => !style.isArchived && style.id !== draft.style.sourceId)
-                          .map(style => (
-                            <MenuItem key={style.id} value={style.id}>
-                              {style.name}
-                            </MenuItem>
-                          ))}
-                        {draft.style.sourceId && (
-                          <MenuItem value={draft.style.sourceId}>{draft.style.name} (saved selection)</MenuItem>
-                        )}
-                      </TextField>
-                      <TextField
-                        select
-                        label="Paper size"
-                        value={draft.style.pageFormat}
-                        disabled={busy}
-                        helperText="Saved with this contract."
-                        onChange={event =>
-                          change({
-                            style: { ...draft.style, pageFormat: event.target.value === 'A4' ? 'A4' : 'LETTER' }
-                          })
-                        }
-                      >
-                        <MenuItem value="LETTER">US Letter (8.5 × 11 in)</MenuItem>
-                        <MenuItem value="A4">A4 (210 × 297 mm)</MenuItem>
-                      </TextField>
-                    </>
-                  )}
-                  {step === 1 && (
-                    <>
-                      <Typography variant="h6">Labor rates</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Select the services to include. Saved selections retain their agreed rates.
-                      </Typography>
-                      {rateOptions.map(rate => (
-                        <Stack
-                          direction="row"
-                          key={rate.sourceId}
-                          sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-                        >
-                          <FormControlLabel
-                            control={
-                              <Checkbox
-                                disabled={busy}
-                                checked={draft.rates.some(r => r.sourceId === rate.sourceId)}
-                                onChange={(_, checked) => chooseRate(rate, checked)}
-                              />
-                            }
-                            label={rate.name}
-                          />
-                          <Typography sx={{ whiteSpace: 'nowrap' }}>{contractAmount(rate.hourlyRate)} / hr</Typography>
-                        </Stack>
-                      ))}
-                      <FormControlLabel
-                        control={
-                          <Checkbox checked={showAllItems} onChange={(_, checked) => setShowAllItems(checked)} />
-                        }
-                        label="Show all catalog items"
-                      />
-                      <Divider />
-                      <Typography variant="h6">Consultation &amp; assessment labor</Typography>
-                      <TextField
-                        select
-                        label="Rate item"
-                        value={draft.assessmentRate?.sourceId ?? ''}
-                        disabled={busy}
-                        onChange={event =>
-                          change({ assessmentRate: availableRates.get(Number(event.target.value)) ?? null })
-                        }
-                      >
-                        <MenuItem value="">Select a rate item</MenuItem>
-                        {rateOptions.map(rate => (
-                          <MenuItem key={rate.sourceId} value={rate.sourceId}>
-                            {rate.name} · {contractAmount(rate.hourlyRate)} / hr
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                      <TextField
-                        label="Multiplier"
-                        type="number"
-                        value={draft.assessmentMultiplier}
-                        disabled={busy}
-                        onChange={event => change({ assessmentMultiplier: event.target.value })}
-                        error={Boolean(feeError)}
-                        helperText={feeError || 'Multiplies the selected full hourly rate. Editable for each contract.'}
-                        slotProps={{ htmlInput: { min: 0, max: 10000, step: 0.25 } }}
-                      />
-                      <Typography variant="h5" color="primary" aria-live="polite">
-                        {draft.assessmentRate
-                          ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
-                          : '—'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Billed as full-rate hourly labor on the first invoice. Add the labor item when you prepare that
-                        invoice.
-                      </Typography>
-                      <Divider />
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={draft.quotedAmount !== null}
-                            disabled={busy}
-                            onChange={(_, checked) => change({ quotedAmount: checked ? '' : null })}
-                          />
-                        }
-                        label="Include a cost estimate"
-                      />
-                      {draft.quotedAmount !== null && (
-                        <TextField
-                          label="Estimated project cost (USD)"
-                          helperText="An estimate, not a fixed price. Final charges reflect actual time, materials, and agreed additional charges."
-                          type="number"
-                          value={draft.quotedAmount}
-                          disabled={busy}
-                          onChange={event => change({ quotedAmount: event.target.value })}
-                          slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-                        />
-                      )}
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={Boolean(draft.retainer)}
-                            disabled={busy}
-                            onChange={(_, checked) =>
-                              change({
-                                retainer: checked
-                                  ? { policy: 'estimate-ten-percent-capped-v1', terms: CONTRACT_RETAINER_TERMS }
-                                  : null
-                              })
-                            }
-                          />
-                        }
-                        label="Include an upfront retainer"
-                      />
-                      {draft.retainer && (
-                        <>
-                          <Typography variant="h6" color="primary" aria-live="polite">
-                            Retainer: {contractRetainerAmount(draft)}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {draft.quotedAmount === null
-                              ? '$500 when no estimate is given.'
-                              : '10% of the estimate, capped at $1,000.'}{' '}
-                            Credited to the first invoice; excess carries forward and any unused balance is refunded
-                            when work ends.
-                          </Typography>
+            <EditPreviewToggle mode={mode} setMode={setMode} disabled={busy} />
+            <Typography variant="body2" color="text.secondary" role="status">
+              {dirty ? 'Unsaved changes' : saved ? 'Saved' : 'New contract'}
+            </Typography>
+          </Stack>
+          <Box hidden={mode !== InvoiceFormMode.edit}>
+            <Stepper nonLinear activeStep={step} sx={{ mb: 3, flexWrap: 'wrap', gap: 1 }}>
+              {steps.map((label, index) => (
+                <Step key={label}>
+                  <StepButton disabled={busy} onClick={() => setStep(index)}>
+                    {label}
+                  </StepButton>
+                </Step>
+              ))}
+            </Stepper>
+            <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack spacing={2.5} sx={{ maxWidth: 960, mx: 'auto' }}>
+                {step === 0 && (
+                  <>
+                    <Typography variant="h6">Client &amp; project</Typography>
+                    <Autocomplete
+                      options={clientOptions}
+                      value={draft.client}
+                      disabled={busy}
+                      isOptionEqualToValue={(a, b) => a.sourceId === b.sourceId}
+                      getOptionLabel={option => option.name}
+                      onChange={(_, value) => change({ client: value ? { ...value } : null })}
+                      renderInput={params => <TextField {...params} label="Client" />}
+                    />
+                    <Autocomplete
+                      options={businessOptions}
+                      value={draft.business}
+                      disabled={busy}
+                      isOptionEqualToValue={(a, b) => a.sourceId === b.sourceId}
+                      getOptionLabel={option => option.name}
+                      onChange={(_, value) => {
+                        const current = businesses.find(business => business.id === value?.sourceId);
+                        if (current) void selectBusiness(current);
+                        else if (!value) change({ business: null });
+                      }}
+                      renderInput={params => <TextField {...params} label="Business" />}
+                    />
+                    {field('title', 'Project title')}
+                    <TextField
+                      label="Contract date"
+                      type="date"
+                      value={draft.date}
+                      disabled={busy}
+                      slotProps={{ inputLabel: { shrink: true } }}
+                      onChange={event => change({ date: event.target.value })}
+                    />
+                    {field('projectAddress', 'Project address')}
+                    {field('scope', 'Project scope', 3)}
+                    <Accordion disableGutters elevation={0} sx={{ '&:before': { display: 'none' } }}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography color="primary">Project-specific details</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={2}>
                           <TextField
-                            label="Retainer credit and refund terms"
+                            label="Agreed work and materials"
                             multiline
                             minRows={3}
                             disabled={busy}
-                            value={draft.retainer.terms}
-                            onChange={event => change({ retainer: { ...draft.retainer!, terms: event.target.value } })}
+                            value={projectDetails.workAndMaterials}
+                            onChange={event => changeProjectDetail('workAndMaterials', event.target.value)}
+                          />
+                          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                            <TextField
+                              label="Approximate start"
+                              type="date"
+                              fullWidth
+                              disabled={busy}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={projectDetails.approximateStart}
+                              onChange={event => changeProjectDetail('approximateStart', event.target.value)}
+                            />
+                            <TextField
+                              label="Approximate completion"
+                              type="date"
+                              fullWidth
+                              disabled={busy}
+                              slotProps={{ inputLabel: { shrink: true } }}
+                              value={projectDetails.approximateCompletion}
+                              error={projectDateError}
+                              helperText={projectDateError ? 'Completion cannot be before the start date.' : undefined}
+                              onChange={event => changeProjectDetail('approximateCompletion', event.target.value)}
+                            />
+                          </Stack>
+                          <TextField
+                            label="Permit arrangements"
+                            disabled={busy}
+                            value={projectDetails.permitArrangements}
+                            onChange={event => changeProjectDetail('permitArrangements', event.target.value)}
+                          />
+                          <TextField
+                            label="Access, cleanup, or other agreed details"
+                            multiline
+                            minRows={2}
+                            disabled={busy}
+                            value={projectDetails.otherArrangements}
+                            onChange={event => changeProjectDetail('otherArrangements', event.target.value)}
                           />
                           <Typography variant="caption" color="text.secondary">
-                            California home-improvement down payments are generally limited to the lesser of $1,000 or
-                            10% of the agreed contract price. An estimate does not establish that price; confirm the
-                            permitted amount before collection. Record any payment received on the invoice separately.
+                            Blank details are omitted from the PDF.
                           </Typography>
-                        </>
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                    <TextField
+                      select
+                      label="Style profile"
+                      value={draft.style.sourceId ?? ''}
+                      disabled={busy}
+                      onChange={event => {
+                        const style = styles.find(profile => profile.id === Number(event.target.value));
+                        if (style)
+                          change({
+                            style: {
+                              sourceId: style.id,
+                              name: style.name,
+                              color: style.color || '#006400',
+                              fontFamily: style.fontFamily || 'Helvetica',
+                              fontSize: style.fontSize || 'medium',
+                              logoSize: style.logoSize || 'medium',
+                              pageFormat: style.pageFormat === 'A4' ? 'A4' : 'LETTER'
+                            }
+                          });
+                        else if (!event.target.value) change({ style: newContractDraft(today()).style });
+                      }}
+                    >
+                      <MenuItem value="">Default</MenuItem>
+                      {styles
+                        .filter(style => !style.isArchived && style.id !== draft.style.sourceId)
+                        .map(style => (
+                          <MenuItem key={style.id} value={style.id}>
+                            {style.name}
+                          </MenuItem>
+                        ))}
+                      {draft.style.sourceId && (
+                        <MenuItem value={draft.style.sourceId}>{draft.style.name} (saved selection)</MenuItem>
                       )}
-                    </>
-                  )}
-                  {step === 2 && (
-                    <>
-                      <Typography variant="h6">Terms &amp; billing</Typography>
-                      {field('billableTimeTerms', 'Billable time and consultation', 8)}
-                      <Button
-                        size="small"
-                        sx={{ alignSelf: 'flex-start' }}
-                        disabled={busy}
-                        onClick={() => change({ billableTimeTerms: CONTRACT_BILLABLE_TIME_TERMS })}
-                      >
-                        Use suggested time definitions
-                      </Button>
-                      {field('billingSchedule', 'Billing schedule (optional)')}
-                      {field('paymentTerms', 'Payment terms', 2)}
-                      {field('materialsTerms', 'Materials', 2)}
-                      {field('standardTerms', 'Standard terms for this contract', 8)}
-                      <ArbitrationFields
-                        value={draft.arbitration}
-                        disabled={busy}
-                        onChange={arbitration => change({ arbitration })}
-                      />
-                      {field('additionalTerms', 'Additional charges / project terms', 3)}
-                      <Typography variant="body2" color="text.secondary">
-                        Edits apply to this contract. Other saved contracts retain their own terms.
-                      </Typography>
-                    </>
-                  )}
-                  {step === 3 && (
-                    <>
-                      <Typography variant="h6">Review contract</Typography>
-                      <Typography>{draft.title || 'Project title needed'}</Typography>
-                      <Typography>
-                        {draft.business?.name || 'Business not selected'} ·{' '}
-                        {draft.client?.name || 'Client not selected'}
-                      </Typography>
-                      <Typography>
-                        Consultation / assessment:{' '}
-                        {draft.assessmentRate
-                          ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
-                          : 'Rate not selected'}
-                      </Typography>
-                      {draft.retainer && <Typography>Retainer: {contractRetainerAmount(draft)}</Typography>}
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            disabled={busy}
-                            checked={draft.signed}
-                            onChange={(_, checked) => change({ signed: checked })}
-                          />
-                        }
-                        label="Signed"
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        The signed toggle records status only. Both parties sign the printed agreement.
-                      </Typography>
-                      <Alert severity="info">
-                        Exports are marked draft for review. Arbitration includes its notice and separate initials when
-                        enabled. Other required California residential terms and statutory notices are not automatically
-                        supplied.
-                      </Alert>
-                      <Button variant="contained" disabled={busy} onClick={() => void exportPdf()}>
-                        Export draft PDF
-                      </Button>
-                    </>
-                  )}
-                </Stack>
-              </Paper>
-              <Stack direction="row" sx={{ mt: 2, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                {saved && (
-                  <Button color="error" startIcon={<DeleteIcon />} disabled={busy} onClick={() => confirmDelete(saved)}>
-                    Delete contract
-                  </Button>
+                    </TextField>
+                    <TextField
+                      select
+                      label="Paper size"
+                      value={draft.style.pageFormat}
+                      disabled={busy}
+                      helperText="Saved with this contract."
+                      onChange={event =>
+                        change({
+                          style: { ...draft.style, pageFormat: event.target.value === 'A4' ? 'A4' : 'LETTER' }
+                        })
+                      }
+                    >
+                      <MenuItem value="LETTER">US Letter (8.5 × 11 in)</MenuItem>
+                      <MenuItem value="A4">A4 (210 × 297 mm)</MenuItem>
+                    </TextField>
+                  </>
                 )}
-                <Button disabled={step === 0 || busy} onClick={() => setStep(value => value - 1)}>
-                  Back
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  {dirty ? 'Unsaved changes' : saved ? 'Saved' : 'New contract'}
-                </Typography>
-                <Box sx={{ flexGrow: 1 }} />
-                <Button disabled={busy} onClick={() => void save()}>
-                  Save draft
-                </Button>
-                {step < 3 && (
-                  <Button variant="contained" disabled={busy} onClick={() => setStep(value => value + 1)}>
-                    Next
-                  </Button>
+                {step === 1 && (
+                  <>
+                    <Typography variant="h6">Labor rates</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Select the services to include. Saved selections retain their agreed rates.
+                    </Typography>
+                    {rateOptions.map(rate => (
+                      <Stack
+                        direction="row"
+                        key={rate.sourceId}
+                        sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              disabled={busy}
+                              checked={draft.rates.some(r => r.sourceId === rate.sourceId)}
+                              onChange={(_, checked) => chooseRate(rate, checked)}
+                            />
+                          }
+                          label={rate.name}
+                        />
+                        <Typography sx={{ whiteSpace: 'nowrap' }}>{contractAmount(rate.hourlyRate)} / hr</Typography>
+                      </Stack>
+                    ))}
+                    <FormControlLabel
+                      control={<Checkbox checked={showAllItems} onChange={(_, checked) => setShowAllItems(checked)} />}
+                      label="Show all catalog items"
+                    />
+                    <Divider />
+                    <Typography variant="h6">Consultation &amp; assessment labor</Typography>
+                    <TextField
+                      select
+                      label="Rate item"
+                      value={draft.assessmentRate?.sourceId ?? ''}
+                      disabled={busy}
+                      onChange={event =>
+                        change({ assessmentRate: availableRates.get(Number(event.target.value)) ?? null })
+                      }
+                    >
+                      <MenuItem value="">Select a rate item</MenuItem>
+                      {rateOptions.map(rate => (
+                        <MenuItem key={rate.sourceId} value={rate.sourceId}>
+                          {rate.name} · {contractAmount(rate.hourlyRate)} / hr
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      label="Multiplier"
+                      type="number"
+                      value={draft.assessmentMultiplier}
+                      disabled={busy}
+                      onChange={event => change({ assessmentMultiplier: event.target.value })}
+                      error={Boolean(feeError)}
+                      helperText={feeError || 'Multiplies the selected full hourly rate. Editable for each contract.'}
+                      slotProps={{ htmlInput: { min: 0, max: 10000, step: 0.25 } }}
+                    />
+                    <Typography variant="h5" color="primary" aria-live="polite">
+                      {draft.assessmentRate
+                        ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
+                        : '—'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Billed as full-rate hourly labor on the first invoice. Add the labor item when you prepare that
+                      invoice.
+                    </Typography>
+                    <Divider />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={draft.quotedAmount !== null}
+                          disabled={busy}
+                          onChange={(_, checked) => change({ quotedAmount: checked ? '' : null })}
+                        />
+                      }
+                      label="Include a cost estimate"
+                    />
+                    {draft.quotedAmount !== null && (
+                      <TextField
+                        label="Estimated project cost (USD)"
+                        helperText="An estimate, not a fixed price. Final charges reflect actual time, materials, and agreed additional charges."
+                        type="number"
+                        value={draft.quotedAmount}
+                        disabled={busy}
+                        onChange={event => change({ quotedAmount: event.target.value })}
+                        slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+                      />
+                    )}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={Boolean(draft.retainer)}
+                          disabled={busy}
+                          onChange={(_, checked) =>
+                            change({
+                              retainer: checked
+                                ? { policy: 'estimate-ten-percent-capped-v1', terms: CONTRACT_RETAINER_TERMS }
+                                : null
+                            })
+                          }
+                        />
+                      }
+                      label="Include an upfront retainer"
+                    />
+                    {draft.retainer && (
+                      <>
+                        <Typography variant="h6" color="primary" aria-live="polite">
+                          Retainer: {contractRetainerAmount(draft)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {draft.quotedAmount === null
+                            ? '$500 when no estimate is given.'
+                            : '10% of the estimate, capped at $1,000.'}{' '}
+                          Credited to the first invoice; excess carries forward and any unused balance is refunded when
+                          work ends.
+                        </Typography>
+                        <TextField
+                          label="Retainer credit and refund terms"
+                          multiline
+                          minRows={3}
+                          disabled={busy}
+                          value={draft.retainer.terms}
+                          onChange={event => change({ retainer: { ...draft.retainer!, terms: event.target.value } })}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          California home-improvement down payments are generally limited to the lesser of $1,000 or 10%
+                          of the agreed contract price. An estimate does not establish that price; confirm the permitted
+                          amount before collection. Record any payment received on the invoice separately.
+                        </Typography>
+                      </>
+                    )}
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <Typography variant="h6">Terms &amp; billing</Typography>
+                    {field('billableTimeTerms', 'Billable time and consultation', 8)}
+                    <Button
+                      size="small"
+                      sx={{ alignSelf: 'flex-start' }}
+                      disabled={busy}
+                      onClick={() => change({ billableTimeTerms: CONTRACT_BILLABLE_TIME_TERMS })}
+                    >
+                      Use suggested time definitions
+                    </Button>
+                    {field('billingSchedule', 'Billing schedule (optional)')}
+                    {field('paymentTerms', 'Payment terms', 2)}
+                    {field('materialsTerms', 'Materials', 2)}
+                    {field('standardTerms', 'Standard terms for this contract', 8)}
+                    <ArbitrationFields
+                      value={draft.arbitration}
+                      disabled={busy}
+                      onChange={arbitration => change({ arbitration })}
+                    />
+                    {field('additionalTerms', 'Additional charges / project terms', 3)}
+                    <Typography variant="body2" color="text.secondary">
+                      Edits apply to this contract. Other saved contracts retain their own terms.
+                    </Typography>
+                  </>
+                )}
+                {step === 3 && (
+                  <>
+                    <Typography variant="h6">Review contract</Typography>
+                    <Typography>{draft.title || 'Project title needed'}</Typography>
+                    <Typography>
+                      {draft.business?.name || 'Business not selected'} · {draft.client?.name || 'Client not selected'}
+                    </Typography>
+                    <Typography>
+                      Consultation / assessment:{' '}
+                      {draft.assessmentRate
+                        ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
+                        : 'Rate not selected'}
+                    </Typography>
+                    {draft.retainer && <Typography>Retainer: {contractRetainerAmount(draft)}</Typography>}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          disabled={busy}
+                          checked={draft.signed}
+                          onChange={(_, checked) => change({ signed: checked })}
+                        />
+                      }
+                      label="Signed"
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      The signed toggle records status only. Both parties sign the printed agreement.
+                    </Typography>
+                    <Alert severity="info">
+                      Exports are marked draft for review. Arbitration includes its notice and separate initials when
+                      enabled. Other required California residential terms and statutory notices are not automatically
+                      supplied.
+                    </Alert>
+                    <Button variant="outlined" disabled={busy} onClick={() => void exportPdf()}>
+                      Export draft PDF
+                    </Button>
+                  </>
                 )}
               </Stack>
-            </Box>
-            <ContractPreview draft={draft} />
+            </Paper>
           </Box>
+          {mode === InvoiceFormMode.preview && (
+            <Box>
+              <Stack
+                direction="row"
+                sx={{ mb: 2, gap: 2, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Preview reflects your current edits. Export the draft PDF for final page layout.
+                </Typography>
+                <Button variant="outlined" disabled={busy} onClick={() => void exportPdf()}>
+                  Export draft PDF
+                </Button>
+              </Stack>
+              <ContractPreview draft={draft} />
+            </Box>
+          )}
+          <Stack direction="row" sx={{ mt: 2, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+            {saved && (
+              <Button color="error" startIcon={<DeleteIcon />} disabled={busy} onClick={() => confirmDelete(saved)}>
+                Delete contract
+              </Button>
+            )}
+            {mode === InvoiceFormMode.edit && (
+              <Button disabled={step === 0 || busy} onClick={() => setStep(value => value - 1)}>
+                Back
+              </Button>
+            )}
+            <Box sx={{ flexGrow: 1 }} />
+            <Button variant="contained" disabled={busy} onClick={() => void save()}>
+              Save draft
+            </Button>
+            {mode === InvoiceFormMode.edit && step < 3 && (
+              <Button variant="outlined" disabled={busy} onClick={() => setStep(value => value + 1)}>
+                Next
+              </Button>
+            )}
+          </Stack>
         </>
       )}
       <Dialog
