@@ -2,6 +2,7 @@ import type { BulkPaymentRequest } from '../../../backend/shared/utils/paymentAl
 import type { AttachmentStorageApi } from '../../../backend/shared/types/attachmentStorage';
 import type {
   ContractSummary,
+  DeleteContractRequest,
   SavedContract,
   SaveContractRequest,
   ContractTermsTemplate
@@ -79,6 +80,7 @@ declare global {
       listContracts: (clientId?: number) => Promise<Response<ContractSummary[]>>;
       getContract: (id: number) => Promise<Response<SavedContract>>;
       saveContract: (request: SaveContractRequest) => Promise<Response<SavedContract>>;
+      deleteContract: (request: DeleteContractRequest) => Promise<Response<{ id: number }>>;
       getContractTermsTemplate: () => Promise<Response<ContractTermsTemplate>>;
       saveContractTermsTemplate: (request: ContractTermsTemplate) => Promise<Response<ContractTermsTemplate>>;
       updateClient: (data: ClientUpdate) => Promise<Response<Client>>;

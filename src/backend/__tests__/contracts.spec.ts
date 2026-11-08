@@ -5,6 +5,7 @@ import { createSqliteAdapter } from '../shared/db/client';
 import { createContractsSchema } from '../shared/db/contractsSchema';
 import { initSchema } from '../shared/db/setup';
 import {
+  deleteContract,
   getContract,
   listContracts,
   saveContract,
@@ -13,6 +14,7 @@ import {
 } from '../shared/services/contracts';
 import { exportAllData, importAllData } from '../shared/services/importExport';
 import type { DatabaseAdapter } from '../shared/types/DatabaseAdapter';
+import type { DeleteContractRequest } from '../shared/types/contracts';
 import { contractFeeCents, contractRetainerCents, newContractDraft } from '../shared/utils/contracts';
 
 describe('contract drafts', () => {
@@ -116,6 +118,53 @@ describe('contract drafts', () => {
     expect(rows.data).toHaveLength(1);
     expect(rows.data?.[0]).not.toHaveProperty('payload');
     expect(rows.data?.[0]).not.toHaveProperty('draft');
+  });
+
+  it('deletes only the selected contract and preserves invoices, receipts, payments, catalog and standard terms', async () => {
+    const first = (await saveContract(db, { draft: draft() })).data!;
+    const retained = (await saveContract(db, { draft: { ...draft(), title: 'Keep this contract' } })).data!;
+    const template = (await saveContractTermsTemplate(db, (await getContractTermsTemplate(db)).data!)).data!;
+    await db.run('CREATE TABLE invoices (id INTEGER PRIMARY KEY, amount INTEGER, receipt BLOB)');
+    await db.run('INSERT INTO invoices VALUES (?, ?, ?)', [1, 12345, Buffer.from('original receipt')]);
+    await db.run('CREATE TABLE payments (id INTEGER PRIMARY KEY, invoiceId INTEGER, amount INTEGER)');
+    await db.run('INSERT INTO payments VALUES (1, 1, 5000)');
+    await db.run('CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)');
+    await db.run('INSERT INTO items VALUES (?, ?)', [1, 'Standard labor']);
+    const before = await Promise.all(['invoices', 'payments', 'items'].map(table => db.all(`SELECT * FROM ${table}`)));
+
+    expect(await deleteContract(db, { id: first.id, revision: first.revision })).toEqual({
+      success: true,
+      data: { id: first.id }
+    });
+    expect((await getContract(db, first.id)).success).toBe(false);
+    expect((await listContracts(db)).data?.map(row => row.id)).toEqual([retained.id]);
+    expect((await getContract(db, retained.id)).data).toEqual(retained);
+    expect((await getContractTermsTemplate(db)).data).toEqual(template);
+    const after = await Promise.all(['invoices', 'payments', 'items'].map(table => db.all(`SELECT * FROM ${table}`)));
+    expect(after).toEqual(before);
+  });
+
+  it('rejects invalid and stale deletions, allows confirmed signed records, and does not recreate deleted contracts', async () => {
+    const first = (await saveContract(db, { draft: draft() })).data!;
+    const changed = (
+      await saveContract(db, { id: first.id, revision: first.revision, draft: { ...first.draft, signed: true } })
+    ).data!;
+    for (const request of [
+      undefined,
+      { id: 0, revision: 1 },
+      { id: first.id, revision: 0 },
+      { id: String(first.id), revision: 2 }
+    ]) {
+      expect((await deleteContract(db, request as DeleteContractRequest)).success).toBe(false);
+    }
+    expect((await deleteContract(db, { id: first.id, revision: first.revision })).success).toBe(false);
+    expect((await getContract(db, first.id)).data).toEqual(changed);
+    expect((await deleteContract(db, { id: changed.id, revision: changed.revision })).success).toBe(true);
+    expect((await deleteContract(db, { id: changed.id, revision: changed.revision })).success).toBe(false);
+    expect((await saveContract(db, { id: changed.id, revision: changed.revision, draft: changed.draft })).success).toBe(
+      false
+    );
+    expect((await listContracts(db)).data).toEqual([]);
   });
 
   it('saves signed status, rejects stale edits and invalid dates without changing the saved document', async () => {

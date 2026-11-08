@@ -1,5 +1,11 @@
 import type { DatabaseAdapter } from '../types/DatabaseAdapter';
-import type { ContractSummary, SavedContract, SaveContractRequest, ContractTermsTemplate } from '../types/contracts';
+import type {
+  ContractSummary,
+  SavedContract,
+  SaveContractRequest,
+  DeleteContractRequest,
+  ContractTermsTemplate
+} from '../types/contracts';
 import { defaultContractTerms, validateContractDraft, validateContractTerms } from '../utils/contracts';
 import { mapDatabaseError } from '../utils/errorFunctions';
 
@@ -78,6 +84,27 @@ export const getContract = async (db: DatabaseAdapter, id: number) => {
     if (!validId(id)) return { success: false, message: 'Invalid contract.' };
     const row = await db.get<Row>('SELECT * FROM contracts WHERE "id" = ?', [id]);
     return row ? { success: true, data: decode(row) } : { success: false, message: 'Contract not found.' };
+  } catch (error) {
+    return { success: false, ...mapDatabaseError(error, db.type) };
+  }
+};
+
+export const deleteContract = async (db: DatabaseAdapter, request: DeleteContractRequest) => {
+  if (!validId(request?.id) || !validId(request?.revision))
+    return { success: false, message: 'Invalid contract revision.' };
+  try {
+    // Confirmed revision only: another window may have edited or signed it meanwhile.
+    const row = await db.get<{ id: number }>('DELETE FROM contracts WHERE "id" = ? AND "revision" = ? RETURNING "id"', [
+      request.id,
+      request.revision
+    ]);
+    return row
+      ? { success: true, data: row }
+      : {
+          success: false,
+          message:
+            'This contract changed or was already deleted. Close this dialog and reopen the contract before deleting.'
+        };
   } catch (error) {
     return { success: false, ...mapDatabaseError(error, db.type) };
   }

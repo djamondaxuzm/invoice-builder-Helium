@@ -2,6 +2,7 @@
 
 New features & improvements
 
+- Add contract deletion from the list and editor in preview 2.9.0-contracts.4. Confirm the title/client, flag signed records and unsaved edits, reject stale deletions atomically, and keep invoices, payments, catalog records, standard terms and exported PDFs unchanged. No database migration is needed.
 - Publish the approved complete-errand, per-session rounding and first-invoice consultation-labor wording as preview installer 2.9.0-contracts.3. Keep older saved agreements and database templates unchanged unless their suggested time definitions are explicitly applied.
 - Clarify that initial consultation, assessment and quoting are full-rate hourly labor billed on the first invoice. Replace the ambiguous assessment-fee exclusion with plain once-per-period wording, align editor/PDF labels and retainer-credit wording, and identify outside consultants as third parties.
 - Clarify that complete job errands, including materials selection/purchase and waiting, use half rate; separate materials research/consultation uses regular rate. Round each billable session or complete errand once to 15 minutes and prevent double billing or per-step rounding. Use a neutral half-rate table label, preserve saved wording, and document explicitly applying the corrected definitions.

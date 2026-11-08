@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { SaveContractRequest, ContractTermsTemplate } from '../backend/shared/types/contracts';
+import type {
+  SaveContractRequest,
+  DeleteContractRequest,
+  ContractTermsTemplate
+} from '../backend/shared/types/contracts';
 import type { AttachmentReadRequest, AttachmentReplaceRequest } from '../backend/shared/types/attachmentStorage';
 import type { BulkPaymentRequest } from '../backend/shared/utils/paymentAllocation';
 import type { DBInitType } from '../renderer/shared/enums/dbInitType';
@@ -86,6 +90,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listContracts: (clientId?: number) => ipcRenderer.invoke('list-contracts', clientId),
   getContract: (id: number) => ipcRenderer.invoke('get-contract', id),
   saveContract: (request: SaveContractRequest) => ipcRenderer.invoke('save-contract', request),
+  deleteContract: (request: DeleteContractRequest) => ipcRenderer.invoke('delete-contract', request),
   getContractTermsTemplate: () => ipcRenderer.invoke('get-contract-terms-template'),
   saveContractTermsTemplate: (request: ContractTermsTemplate) =>
     ipcRenderer.invoke('save-contract-terms-template', request),

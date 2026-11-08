@@ -24,4 +24,9 @@ export const initContractsController = (app: Express) => {
   app.post('/api/contracts', requireDB, async (req, res) =>
     res.json(await service.saveContract(dbInstance!, req.body))
   );
+  app.delete('/api/contracts/:id', requireDB, async (req, res) =>
+    res.json(
+      await service.deleteContract(dbInstance!, { id: Number(req.params.id), revision: Number(req.query.revision) })
+    )
+  );
 };

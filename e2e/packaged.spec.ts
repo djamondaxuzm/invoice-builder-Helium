@@ -1,5 +1,5 @@
 import { _electron as electron, expect, test } from '@playwright/test';
-import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import process from 'node:process';
 import { DatabaseType } from '../src/renderer/shared/enums/databaseType';
@@ -154,6 +154,19 @@ test('packaged app creates, saves and reopens SQLite data with an isolated profi
     await testInfo.attach('contract-draft', { path: pdfPath, contentType: 'application/pdf' });
     expect(errors).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath('packaged-contract.png') });
+    await page.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    const deletion = page.getByRole('dialog', { name: 'Delete contract?', exact: true });
+    await expect(deletion.getByText(contract.title, { exact: true })).toBeVisible();
+    await expect(deletion.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+    await deletion.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(deletion).not.toBeVisible();
+    expect((await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id)).success).toBe(true);
+    await page.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    await deletion.getByRole('button', { name: 'Delete contract', exact: true }).click();
+    await expect(page.getByText('Contract deleted.', { exact: true })).toBeVisible();
+    expect((await page.evaluate(id => window.electronAPI.getContract(id), savedContract.data!.id)).success).toBe(false);
+    expect(existsSync(pdfPath)).toBe(true);
+    expect(errors).toEqual([]);
   } finally {
     await app.close();
   }

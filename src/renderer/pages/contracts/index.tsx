@@ -26,6 +26,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import DeleteIcon from '@mui/icons-material/Delete';
 import type {
   ContractDraft,
   ContractParty,
@@ -96,6 +97,9 @@ export const ContractsPage = () => {
   const [pending, setPending] = useState<(() => void) | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateDirty, setTemplateDirty] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ContractSummary | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const deleting = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
     dispatch(setAllowed(!dirty && !templateDirty));
@@ -250,6 +254,47 @@ export const ContractsPage = () => {
       if (mounted.current) setBusy(false);
     }
   };
+  const confirmDelete = (record: ContractSummary) => {
+    setDeleteError('');
+    setDeleteTarget(record);
+  };
+  const replaceList = (rows: ContractSummary[]) => {
+    setContracts(rows);
+    setClientFilter(current => (rows.some(row => String(row.clientId) === current) ? current : ''));
+  };
+  const remove = async () => {
+    if (!deleteTarget || busy || deleting.current) return;
+    const target = deleteTarget;
+    deleting.current = true;
+    setBusy(true);
+    setDeleteError('');
+    try {
+      const result = await getApi().deleteContract({ id: target.id, revision: target.revision });
+      if (!mounted.current) return;
+      if (!result.success) {
+        setDeleteError(result.message || 'Could not delete this contract. Try again.');
+        // Refresh stale list rows without silently changing the confirmed revision or open edits.
+        const refreshed = await getApi().listContracts();
+        if (mounted.current && refreshed.success) replaceList(refreshed.data ?? []);
+        return;
+      }
+      replaceList(contracts.filter(row => row.id !== target.id));
+      if (saved?.id === target.id) {
+        setDraft(null);
+        setSaved(null);
+        setDirty(false);
+        setStep(0);
+      }
+      setDeleteTarget(null);
+      setError('');
+      setNotice('Contract deleted.');
+    } catch (err) {
+      if (mounted.current) setDeleteError(err instanceof Error ? err.message : 'Could not delete this contract.');
+    } finally {
+      deleting.current = false;
+      if (mounted.current) setBusy(false);
+    }
+  };
   const exportPdf = async () => {
     if (!draft || busy) return;
     setBusy(true);
@@ -304,6 +349,7 @@ export const ContractsPage = () => {
   const clientFilters = new Map(
     contracts.filter(row => row.clientId !== null).map(row => [String(row.clientId), row.clientName])
   );
+  const visibleContracts = contracts.filter(row => !clientFilter || String(row.clientId) === clientFilter);
   let feeError = '';
   if (draft) {
     try {
@@ -387,6 +433,7 @@ export const ContractsPage = () => {
             select
             label="Client"
             value={clientFilter}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
             onChange={event => setClientFilter(event.target.value)}
             sx={{ minWidth: 240, mb: 2 }}
           >
@@ -398,31 +445,42 @@ export const ContractsPage = () => {
             ))}
           </TextField>
           <Stack spacing={2}>
-            {contracts
-              .filter(row => !clientFilter || String(row.clientId) === clientFilter)
-              .map(row => (
-                <Paper key={row.id} sx={{ p: 2 }}>
-                  <Stack
-                    direction="row"
-                    sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}
-                  >
-                    <Box>
-                      <Typography variant="h6">{row.title}</Typography>
-                      <Typography color="text.secondary">
-                        {row.clientName || 'No client selected'} · {readableDate(row.date)}
-                      </Typography>
-                    </Box>
-                    <Stack direction="row" sx={{ gap: 2, alignItems: 'center' }}>
-                      <Chip label={row.signed ? 'Signed' : 'Not signed'} color={row.signed ? 'success' : 'default'} />
-                      <Button disabled={busy} onClick={() => void open(row.id)}>
-                        Open contract
-                      </Button>
-                    </Stack>
+            {visibleContracts.map(row => (
+              <Paper key={row.id} component="article" aria-label={row.title} sx={{ p: 2 }}>
+                <Stack
+                  direction="row"
+                  sx={{ gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  <Box>
+                    <Typography variant="h6">{row.title}</Typography>
+                    <Typography color="text.secondary">
+                      {row.clientName || 'No client selected'} · {readableDate(row.date)}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Chip label={row.signed ? 'Signed' : 'Not signed'} color={row.signed ? 'success' : 'default'} />
+                    <Button disabled={busy} onClick={() => void open(row.id)}>
+                      Open contract
+                    </Button>
+                    <Button
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      disabled={busy}
+                      aria-label={`Delete contract ${row.title}`}
+                      onClick={() => confirmDelete(row)}
+                    >
+                      Delete
+                    </Button>
                   </Stack>
-                </Paper>
-              ))}
-            {!contracts.length && (
-              <Typography color="text.secondary">Create a contract from your client and service items.</Typography>
+                </Stack>
+              </Paper>
+            ))}
+            {!visibleContracts.length && (
+              <Typography color="text.secondary">
+                {clientFilter
+                  ? 'No contracts for this client.'
+                  : 'Create a contract from your client and service items.'}
+              </Typography>
             )}
           </Stack>
         </>
@@ -797,6 +855,11 @@ export const ContractsPage = () => {
                 </Stack>
               </Paper>
               <Stack direction="row" sx={{ mt: 2, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                {saved && (
+                  <Button color="error" startIcon={<DeleteIcon />} disabled={busy} onClick={() => confirmDelete(saved)}>
+                    Delete contract
+                  </Button>
+                )}
                 <Button disabled={step === 0 || busy} onClick={() => setStep(value => value - 1)}>
                   Back
                 </Button>
@@ -818,6 +881,42 @@ export const ContractsPage = () => {
           </Box>
         </>
       )}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={busy ? undefined : () => setDeleteTarget(null)}
+        aria-labelledby="delete-contract-title"
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle id="delete-contract-title">Delete contract?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            <Box>
+              <Typography sx={{ fontWeight: 600 }}>{deleteTarget?.title}</Typography>
+              <Typography>
+                {deleteTarget?.clientName || 'No client selected'} · {deleteTarget && readableDate(deleteTarget.date)}
+              </Typography>
+            </Box>
+            <Typography>
+              Permanently delete this saved contract? Invoices, payments and exported PDFs are kept. This cannot be
+              undone here.
+            </Typography>
+            {deleteTarget?.signed && <Alert severity="warning">This contract is marked signed.</Alert>}
+            {deleteTarget?.id === saved?.id && dirty && (
+              <Alert severity="warning">Unsaved edits to this contract will also be discarded.</Alert>
+            )}
+            {deleteError && <Alert severity="error">{deleteError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button autoFocus disabled={busy} onClick={() => setDeleteTarget(null)}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" disabled={busy} onClick={() => void remove()}>
+            {busy ? 'Deleting…' : 'Delete contract'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(pending)} onClose={() => setPending(null)}>
         <DialogTitle>Discard unsaved contract changes?</DialogTitle>
         <DialogContent>Your saved contract will remain unchanged.</DialogContent>

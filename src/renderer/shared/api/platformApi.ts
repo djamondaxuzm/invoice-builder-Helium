@@ -3,6 +3,7 @@ import type {
   ContractSummary,
   SavedContract,
   SaveContractRequest,
+  DeleteContractRequest,
   ContractTermsTemplate
 } from '../../../backend/shared/types/contracts';
 import type {
@@ -370,6 +371,8 @@ export const webApi = () => {
       ),
     getContract: (id: number) => apiGet<Response<SavedContract>>(`/api/contracts/${id}`),
     saveContract: (request: SaveContractRequest) => apiPost<Response<SavedContract>>('/api/contracts', request),
+    deleteContract: (request: DeleteContractRequest) =>
+      apiDelete<Response<{ id: number }>>(`/api/contracts/${request.id}?revision=${request.revision}`),
     getContractTermsTemplate: () => apiGet<Response<ContractTermsTemplate>>('/api/contract-terms-template'),
     saveContractTermsTemplate: (request: ContractTermsTemplate) =>
       apiPut<Response<ContractTermsTemplate>>('/api/contract-terms-template', request),

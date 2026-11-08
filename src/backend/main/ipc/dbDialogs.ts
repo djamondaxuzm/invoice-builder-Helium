@@ -20,6 +20,7 @@ const resetIPCHandlers = () => {
     'list-contracts',
     'get-contract',
     'save-contract',
+    'delete-contract',
     'get-contract-terms-template',
     'save-contract-terms-template',
     'add-business',

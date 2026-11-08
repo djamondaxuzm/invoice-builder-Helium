@@ -78,6 +78,11 @@ export interface SaveContractRequest {
   draft: ContractDraft;
 }
 
+export interface DeleteContractRequest {
+  id: number;
+  revision: number;
+}
+
 export type ContractTerms = Pick<
   ContractDraft,
   'billingSchedule' | 'paymentTerms' | 'materialsTerms' | 'standardTerms' | 'billableTimeTerms' | 'arbitration'
