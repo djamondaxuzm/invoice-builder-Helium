@@ -1,21 +1,21 @@
 import type { ContractDraft, ContractParty, ContractRate, ContractTerms } from '../types/contracts';
 
 export const CONTRACT_TIME_TERMS =
-  'Billable time is rounded up to the next 15-minute increment. There is no minimum charge per visit.';
+  "Each worker's separate billable work session or complete errand is rounded up once to the next 15-minute increment, then billed at its applicable rate. Travel, shopping and waiting within one continuous errand are not rounded separately. Nonbillable time is excluded before rounding. There is no additional minimum visit charge.";
 export const CONTRACT_TRAVEL_TERMS =
-  "Only travel required to perform the client's work is billed at 50% of the applicable hourly rate. Ordinary commuting to and from the worksite is not billed.";
+  "Job errands and work travel are billed at 50% of each worker's applicable hourly rate. The entire job-related errand is half rate, including required travel, selecting and purchasing materials, checkout, pickup, returns and waiting. Travel between project locations is also half rate. Ordinary commuting to the first worksite and home from the last worksite is excluded.";
 export const CONTRACT_ESTIMATE_TERMS =
   'This is an estimate, not a fixed price. Final charges are based on actual billable time, materials purchased at cost, and any agreed additional charges.';
 export const CONTRACT_CHANGE_TERMS =
   'Changes to the agreed work will be described in writing and signed by both parties before that changed work begins. The written change will identify the work, any resulting cost changes, and any effect on the payment schedule or completion date.';
 export const CONTRACT_BILLABLE_TIME_TERMS = [
-  "Regular billable hours are each worker's recorded time on the agreed work, including preparation, project-specific purchasing, coordination and cleanup. Breaks and personal time are excluded. Work travel is recorded separately and never also charged as regular time.",
-  "Travel billable hours cover travel required for project tasks, such as collecting materials or moving between project locations, at 50% of the worker's applicable rate. Ordinary commuting to the first worksite and home from the last worksite is excluded. Selecting and purchasing materials is regular time; traveling to collect them is travel time.",
-  'Substantial client-requested consultation or planning, including extended calls, meetings or written exchanges, reviewing options and project-specific research, is billed at regular rates even if the work discussed never proceeds. Signing this agreement provides notice; no separate warning is required. Brief scheduling, status updates and billing questions are not billable. Time covered by the assessment fee is not charged twice.',
+  "Regular billable hours cover each worker's agreed work, preparation, substantive project coordination and cleanup. Job errands and work travel use the half rate below. Breaks and personal time are excluded.",
+  CONTRACT_TRAVEL_TERMS,
+  'Substantial client-requested consultation or planning, including extended calls, meetings, written exchanges, and materials research or selection performed separately from an errand, is billed at regular rates even if the work discussed never proceeds. Materials selection during an errand remains half rate. Signing this agreement provides notice; no separate warning is required. Brief scheduling, status updates and billing questions are not billable. Consultation does not authorize changes to the agreed work. Initial consultation, assessment and quoting time is billed as full-rate hourly labor on the first invoice. Each period of work is billed once at its applicable rate.',
   CONTRACT_TIME_TERMS
 ].join('\n\n');
 export const CONTRACT_RETAINER_TERMS =
-  'The retainer is due before work begins, subject to applicable down-payment limits. It is an advance toward charges, not an extra fee. Payments received are credited to the first invoice, including its assessment fee. Excess credit carries forward; any balance remaining after final charges is refunded when work ends.';
+  'The retainer is due before work begins, subject to applicable down-payment limits. It is an advance toward charges, not an extra fee. Payments received are credited to the first invoice, including its consultation and assessment labor charges. Excess credit carries forward; any balance remaining after final charges is refunded when work ends.';
 export const CONTRACT_CANCELLATION_TERMS =
   'Either party may cancel by written notice. Subject to statutory cancellation and refund rights, the client pays for properly billable work and agreed, non-cancelable costs incurred before receipt of notice.';
 export const CONTRACT_AUTHORIZATION_TERMS =
@@ -45,7 +45,7 @@ export const defaultContractTerms = (): ContractTerms => ({
   paymentTerms: 'Invoices are due within 15 days of invoice notice.\n\n' + CONTRACT_LATE_CHARGE_TERMS,
   arbitration: newContractArbitration(),
   materialsTerms:
-    'Purchased materials and agreed third-party project costs are reimbursed at cost, without markup. Consultant services, printing and governmental or permit fees are excluded from an estimate unless expressly included. We do not collect sales tax.',
+    'Purchased materials and agreed third-party project costs are reimbursed at cost, without markup. Third-party consultant services, printing and governmental or permit fees are excluded from an estimate unless expressly included. We do not collect sales tax.',
   billableTimeTerms: CONTRACT_BILLABLE_TIME_TERMS,
   standardTerms: [CONTRACT_CHANGE_TERMS, CONTRACT_CANCELLATION_TERMS, CONTRACT_AUTHORIZATION_TERMS].join('\n\n')
 });

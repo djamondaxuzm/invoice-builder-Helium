@@ -4,7 +4,8 @@ import type { ContractDraft } from '../../../backend/shared/types/contracts';
 import {
   contractFeeCents,
   contractRetainerCents,
-  CONTRACT_ESTIMATE_TERMS
+  CONTRACT_ESTIMATE_TERMS,
+  CONTRACT_TIME_TERMS
 } from '../../../backend/shared/utils/contracts';
 import RobotoRegular from '../../assets/roboto/Roboto-Regular.ttf';
 import RobotoBold from '../../assets/roboto/Roboto-Bold.ttf';
@@ -143,7 +144,7 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
             >
               <Text style={{ width: '50%' }}>Service</Text>
               <Text style={{ width: '25%', textAlign: 'right' }}>Hourly rate</Text>
-              <Text style={{ width: '25%', textAlign: 'right' }}>Work travel only</Text>
+              <Text style={{ width: '25%', textAlign: 'right' }}>Half-rate time</Text>
             </View>
             {draft.rates.map(rate => (
               <View
@@ -157,7 +158,20 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
               </View>
             ))}
             {draft.billableTimeTerms ? (
-              <View style={{ marginTop: 10 }}>{paragraph(draft.billableTimeTerms)}</View>
+              <View style={{ marginTop: 10 }}>
+                {draft.billableTimeTerms.split(/\n\s*\n/).map((value, index) => (
+                  <Text
+                    key={index}
+                    // Keep the short built-in rounding rule together; custom long clauses can paginate.
+                    wrap={value !== CONTRACT_TIME_TERMS}
+                    orphans={2}
+                    widows={2}
+                    style={{ marginBottom: 8 }}
+                  >
+                    {value}
+                  </Text>
+                ))}
+              </View>
             ) : (
               <Text style={{ marginTop: 7, fontSize: 10 }}>
                 Work travel rates exclude ordinary commuting to and from the worksite.
@@ -169,9 +183,10 @@ export const ContractPDF = ({ draft }: { draft: ContractDraft }) => {
           <View wrap={false}>
             {heading('Charges & payment')}
             <Text style={{ marginBottom: 8 }}>
-              <Text style={{ fontWeight: 700 }}>Assessment &amp; quoting: </Text>
-              {draft.assessmentRate?.name} ({money(draft.assessmentRate!.hourlyRate)}) x {draft.assessmentMultiplier} ={' '}
-              {money(draft.assessmentRate!.hourlyRate, draft.assessmentMultiplier)}. Included on the first invoice.
+              <Text style={{ fontWeight: 700 }}>Consultation &amp; assessment: </Text>
+              {draft.assessmentRate?.name} ({money(draft.assessmentRate!.hourlyRate)} / hr) x{' '}
+              {draft.assessmentMultiplier} = {money(draft.assessmentRate!.hourlyRate, draft.assessmentMultiplier)}.
+              Billed as full-rate hourly labor on the first invoice.
             </Text>
           </View>
           {draft.quotedAmount !== null &&

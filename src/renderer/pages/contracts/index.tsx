@@ -626,7 +626,7 @@ export const ContractsPage = () => {
                         label="Show all catalog items"
                       />
                       <Divider />
-                      <Typography variant="h6">Assessment &amp; quoting fee</Typography>
+                      <Typography variant="h6">Consultation &amp; assessment labor</Typography>
                       <TextField
                         select
                         label="Rate item"
@@ -650,7 +650,7 @@ export const ContractsPage = () => {
                         disabled={busy}
                         onChange={event => change({ assessmentMultiplier: event.target.value })}
                         error={Boolean(feeError)}
-                        helperText={feeError || 'Editable for each contract.'}
+                        helperText={feeError || 'Multiplies the selected full hourly rate. Editable for each contract.'}
                         slotProps={{ htmlInput: { min: 0, max: 10000, step: 0.25 } }}
                       />
                       <Typography variant="h5" color="primary" aria-live="polite">
@@ -659,7 +659,8 @@ export const ContractsPage = () => {
                           : '—'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Billed on the first invoice. Add this charge when you prepare that invoice.
+                        Billed as full-rate hourly labor on the first invoice. Add the labor item when you prepare that
+                        invoice.
                       </Typography>
                       <Divider />
                       <FormControlLabel
@@ -764,7 +765,7 @@ export const ContractsPage = () => {
                         {draft.client?.name || 'Client not selected'}
                       </Typography>
                       <Typography>
-                        Assessment fee:{' '}
+                        Consultation / assessment:{' '}
                         {draft.assessmentRate
                           ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
                           : 'Rate not selected'}

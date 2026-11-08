@@ -111,7 +111,7 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
                 <Typography>{rate.name}</Typography>
                 <Box sx={{ textAlign: 'right' }}>
                   <Typography sx={{ whiteSpace: 'nowrap' }}>{contractAmount(rate.hourlyRate)} / hr</Typography>
-                  <Typography>Work travel: {contractAmount(rate.hourlyRate, '0.5')} / hr</Typography>
+                  <Typography>Half-rate time: {contractAmount(rate.hourlyRate, '0.5')} / hr</Typography>
                 </Box>
               </Stack>
             ))}
@@ -123,17 +123,18 @@ export const ContractPreview = ({ draft }: { draft: ContractDraft }) => {
           'Charges & payment',
           <>
             <Typography>
-              Assessment &amp; quoting:{' '}
+              Consultation &amp; assessment:{' '}
               {draft.assessmentRate
                 ? contractAmount(draft.assessmentRate.hourlyRate, draft.assessmentMultiplier)
                 : 'Select a rate item'}
             </Typography>
             {draft.assessmentRate && (
               <Typography>
-                {draft.assessmentRate.name} × {draft.assessmentMultiplier}
+                {draft.assessmentRate.name} ({contractAmount(draft.assessmentRate.hourlyRate)} / hr) ×{' '}
+                {draft.assessmentMultiplier}
               </Typography>
             )}
-            <Typography>Billed on the first invoice.</Typography>
+            <Typography>Billed as full-rate hourly labor on the first invoice.</Typography>
             {draft.quotedAmount !== null && (
               <Typography sx={{ mt: 2 }}>
                 Estimated project cost: {contractAmount(draft.quotedAmount)}. {CONTRACT_ESTIMATE_TERMS}

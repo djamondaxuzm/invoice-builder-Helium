@@ -2,6 +2,9 @@
 
 New features & improvements
 
+- Publish the approved complete-errand, per-session rounding and first-invoice consultation-labor wording as preview installer 2.9.0-contracts.3. Keep older saved agreements and database templates unchanged unless their suggested time definitions are explicitly applied.
+- Clarify that initial consultation, assessment and quoting are full-rate hourly labor billed on the first invoice. Replace the ambiguous assessment-fee exclusion with plain once-per-period wording, align editor/PDF labels and retainer-credit wording, and identify outside consultants as third parties.
+- Clarify that complete job errands, including materials selection/purchase and waiting, use half rate; separate materials research/consultation uses regular rate. Round each billable session or complete errand once to 15 minutes and prevent double billing or per-step rounding. Use a neutral half-rate table label, preserve saved wording, and document explicitly applying the corrected definitions.
 - Publish the reviewed contract wording and retainer updates as preview installer 2.9.0-contracts.2, with Windows/macOS packaged checks for saved payment, billable-time and arbitration terms.
 - Add the approved 1.5% monthly non-compounding late-charge wording and binding arbitration to new contract defaults. Print arbitration separately with bold uppercase text, the California section 7191 notice and blank initials for both parties. Snapshot the clause and notice; existing contracts and templates remain unchanged. This does not automatically assess late charges on invoices.
 - Adapt the supplied design-services agreement into editable contract defaults for work standards, scope boundaries, third-party project costs, written cancellation and authorization. Retain current catalog rates, 15-day payment terms and the agreed retainer policy.
